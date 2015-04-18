@@ -328,7 +328,6 @@ def parse(ctx, string, data=[]):
             if kwd["STR"]:
                 #tag dont match string so I can do it
                 tag = kwd["STR"].split(":")[-1]
-                print "'%s'" % get_string(kwd["STR"])
                 data+= [ V(get_string(kwd["STR"]), tag.strip()) ]
             if kwd["VAR"]:
                 # dont use "safe_substitute" it is unsafe

@@ -299,7 +299,13 @@ a confined interpreter that will be easy to tweak for your needs.
     |   1 | <Val:type='str' val=FUN tag='_str'>
     |   0 | <Val:type='num' val=2 tag='b'>
     ******************************************
-    data=aAZE&exist=1.23&int=12&a_number=123&b=2
+    {
+        "int": 12, 
+        "exist": 1.23, 
+        "data": "aAZE", 
+        "a_number": 123
+    }
+
     data=aAZE&exist=1.23&int=12&a_number=123&b=2
     
 #INPUT 2

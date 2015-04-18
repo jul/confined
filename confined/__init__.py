@@ -340,12 +340,12 @@ def parse(ctx, string, data=[]):
         print toprint
         print "<%s> triggered EXCP %s" % (current.strip(), e)
     display( data )
-    print res
     if res:
+        data.pop()
+        from json import dumps
+        print dumps(to_dict(data), indent=4)
         return res
 
-    display( data )
-    return data
 print parse(dict(a=1, b=2),'''
 
 +1.23:exist +12:int "AZE":a_string +123:a_number $a $b >NUM SWAP 

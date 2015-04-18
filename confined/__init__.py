@@ -341,7 +341,6 @@ def parse(ctx, string, data=[]):
         print "<%s> triggered EXCP %s" % (current.strip(), e)
     display( data )
     if res:
-        data.pop()
         from json import dumps
         print dumps(to_dict(data), indent=4)
         return res

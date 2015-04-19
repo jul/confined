@@ -16,7 +16,7 @@ if "install" in sys.argv or "setup" in sys.argv or "sdist" in sys.argv:
 
 setup(
         name='confined',
-        version='0.1.4',
+        version='0.1.5',
         author='Julien Tayon',
         author_email='julien@tayon.net',
         packages=['confined'],

@@ -79,7 +79,9 @@ Gives :
 Changelog
 =========
 
-* 0.1.0 initial release
+* 0.1.0 initial release oops forgot __name__ == main
+* 0.1.1 initial release
+* 0.1.2 going to fast, mis clicked a button in pypi
 
 Roadmap before 1.0.0
 ********************

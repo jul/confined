@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf8 -*-
 from decimal import Decimal as NUM, getcontext, setcontext, Inexact, Rounded, Context
 from operator import mul as MUL, div as DIV, add as ADD, sub as SUB
 from string import Template
@@ -65,6 +66,7 @@ def is_int(decimal):
         return False
 class Value(object):
     prec = 2
+    encoding="utf8"
     @can_be({str,unicode,NUM}, {str}) 
     def __init__(self, val, tag=''):
         self.tag, self.val= tag, val
@@ -87,13 +89,15 @@ class Value(object):
     def _out(self):
         return dict(
             str = str,
-            num = lambda v:int(self.val) if is_int(self.val) else float(v.quantize(NUM(10) ** -Value.prec)),
+            num = lambda v:str(int(self.val) if is_int(self.val) else
+float(v.quantize(NUM(10) ** -Value.prec))),
         )[self.type](self.val)
     @property
     def str(self):
-        return str(self._out)
+        return self._out.decode(Value.encoding) if self.type == "str" else str(self._out)
     def __repr__(self):
-        return "".join(["<Val:type='", self.type,"' val=",str(self.str)[:10] + ( len(self.str)>10 and "..." or "")," tag='%(tag)s'>" % (self.__dict__)])
+        return "".join(["<Val:type='", self.type,"' val=",self._out[:10] +
+( len(self._out)>10 and "..." or "")," tag='%(tag)s'>" % (self.__dict__)])
 
 N,V = NUM, Value
 
@@ -295,6 +299,7 @@ def parse(ctx, string, data=[]):
     current_match=0
     cur_pos = 0
     last_token = 0 
+    Value.encoding="utf8"
     try:
         for i,kwd in enumerate(tokenize(ops, string)):
             last_unrecognized = string[last_match:kwd.start()]
@@ -347,7 +352,7 @@ def parse(ctx, string, data=[]):
 
 print parse(dict(a=1, b=2),'''
 
-+1.23:exist +12:int "AZE":a_string +123:a_number $a $b >NUM SWAP 
+"accentué":accent +1.23:exist +12:int "AZE":a_string +123:a_number $a $b >NUM SWAP 
 "a_string":_key GET "a":another_key
 "toto":_miss_get GET CAT "data":_tag TAG  TOP
 1:thos 1.2:notavala 3:val 1:_totest 3:sizeo_compare MATCH IFT "FUN":_str

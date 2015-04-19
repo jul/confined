@@ -15,7 +15,7 @@ if "install" in sys.argv or "setup" in sys.argv or "sdist" in sys.argv:
 
 setup(
         name='confined',
-        version='0.1.1',
+        version='0.1.4',
         author='Julien Tayon',
         author_email='julien@tayon.net',
         packages=['confined'],
@@ -23,7 +23,7 @@ setup(
         license="License :: OSI Approved :: BSD License",
         description="Sage templating language with bounded resource",
         long_description=open("README.rst").read(),
-        requires=[ "check_arg" ],
+        install_requires=[ "check_arg",  ],
         classifiers=[
           'Development Status :: 4 - Beta',
           'Intended Audience :: Developers',

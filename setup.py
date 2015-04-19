@@ -4,19 +4,9 @@
 from distutils.core import setup
 
 import sys
-if "install" in sys.argv or "setup" in sys.argv or "sdist" in sys.argv:
-    from confined import test_valid
-    import unittest
-    loader= unittest.TestLoader()
-    suite=loader.loadTestsFromModule(test_valid)
-    runner=unittest.TextTestRunner(verbosity=2)
-    result=runner.run(suite)
-    if  not result.wasSuccessful():
-        raise Exception( "Test Failed")
-
 setup(
         name='confined',
-        version='0.1.5',
+        version='0.1.7',
         author='Julien Tayon',
         author_email='julien@tayon.net',
         packages=['confined'],
@@ -36,4 +26,14 @@ setup(
           ],
 )
 
+
+if "install" in sys.argv or "setup" in sys.argv or "sdist" in sys.argv:
+    from confined import test_valid
+    import unittest
+    loader= unittest.TestLoader()
+    suite=loader.loadTestsFromModule(test_valid)
+    runner=unittest.TextTestRunner(verbosity=2)
+    result=runner.run(suite)
+    if  not result.wasSuccessful():
+        raise Exception( "Test Failed")
 

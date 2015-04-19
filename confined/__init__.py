@@ -407,34 +407,25 @@ print templatize(dict(price=1, q=3, vat=19.6, name="super carcajou", country="FR
     $price >NUM
     $q >NUM MUL
     $vat >NUM 100:_per_cent_to_per_one DIV 
-    1:_having_price_AND_vat ADD
-    MUL
-    >STR
+    1:_having_price_AND_vat ADD MUL >STR
     " ":_separator
     CAT
     "comment in string and drop":_or_in_tag
     DROP
-
-    "€":_cur
-    "$":_cur
+    "€":_cur "$":_cur 
     $country
     "FR":_cocorico
-    1:_why_do_eq_when_you_can_do_n_eq_ok_1_do_only_one
+    1:_nb_of_lines_for_looking_match
     MATCH
     IFT
     CAT :>
 may I have a dict please? <:
     $price >NUM
-    3:_ MUL
     $q
     "a string":with_a_name
     "ignored":_because_tag_starts_with_
     1231231231231231:a_long_int
-    DUP
-    DUP
-    MUL
-    2.0: MUL 
-    "vlong":_new_name
+    "a new name":_with_space
     TAG
     EDICT
 :>  ....  

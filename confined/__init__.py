@@ -43,9 +43,6 @@ def must_return_value(f):
         assert isinstance(res, Value), "%r is not of type Value" % res
         return res
     return check_f
-# Reverse Polish Notation calculator
-# based on http://en.wikipedia.org/wiki/Reverse_Polish_notation
-ctx = getcontext()
 
 dispatch_op = dict( 
     MUL = mul, DIV=div, ADD=add, SUB=sub,
@@ -109,14 +106,14 @@ def to_num(stack):
 @check_type("num")
 def to_str(stack):
     """Convert the last element of the stack from a string to a num"""
-    value = stack[-1]
-    value.val = value.val.str
+    n = stack.pop()
+    stack += [ V(n.str,n.tag)]
 
 true, false = Value(N(1), "_true"), Value(N(0), "_false")
 
 def to_dict(stack):
     """convert a stack to a dict"""
-    return { v.tag: v._out for v in stack if not v.tag.startswith("_") }
+    return { v.tag: v._out for v in stack if v.tag and not v.tag.startswith("_") }
 
 @check_type("num")
 def ift(stack):
@@ -171,7 +168,7 @@ def num_op(op):
 
 @check_type("str", "str")
 def cat(stack):
-    stack+= [ Value("".join(pop_val(2)(stack))) ]
+    stack+= [ Value("".join(reversed(pop_val(2)(stack)))) ]
 
 @check_type("str")
 def tag(stack):
@@ -223,7 +220,8 @@ def drop(stack):
     stack.pop()
 
 def dup(stack):
-    stack += stack[-1]
+    stack += [ stack[-1] ]
+
 def leng(stack):
     stack += [ V(N(len(stack)),"_length") ]
 
@@ -235,11 +233,12 @@ def eval(stack):
 def ejoin(stack):
     print "EXITING"
     stack += [ "&".join([ "=".join([v.tag,v.str]) for v in stack if not
-v.tag.startswith("_") and v.tag ]),  "<<TERM>>" ]
+v.tag.startswith("_") and v.tag != "" ]),  "<<TERM>>" ]
 import operator
 def edict(stack):
     print "EXITING"
     stack+=[ to_dict(stack), "<<TERM>>" ]
+
 two_num = check_type("num", "num")
 
 
@@ -264,26 +263,25 @@ ops.update({
        ">NUM" : to_num,
        ">STR" : to_str,
        "CAT" : cat,
-        "OR" : apply_(lambda x,y: x or y),
-        "AND" : apply_(lambda x,y: x and y),
-        "CMP" : apply_(lambda x,y: cmp(x, y)),
-        "IN" : in_,
-        "NOT" : not_,
+       "OR" : apply_(lambda x,y: x or y),
+       "AND" : apply_(lambda x,y: x and y),
+       "CMP" : apply_(lambda x,y: cmp(x, y)),
+       "IN" : in_,
+       "NOT" : not_,
        "TAG" : tag,
        "IFT" : ift,
        "MATCH" : match,
        "ROT" : rotn,
        "DUP" : dup,
-        "TOP" : top,
+       "TOP" : top,
        "DROP" : drop,
        "SWAP" : swap,
        "GET" : get,
        "LEN" : leng,
        "EJOIN" : ejoin,
-        "EDICT" : edict,
+       "EDICT" : edict,
        "EVAL" : eval,
        "<<TERM>>" : lambda x:x,
-      
 })
 import re
 base_type = dict(
@@ -304,6 +302,24 @@ def get_string(expr):
         return res.group()[1:-1]
 
 
+def templatize(val,a_str,**kw):
+    pat = re.compile(r'''(?P<CODE><: (((?!:>).)*) :>)''',re.DOTALL|re.VERBOSE)
+    tkr = pat.finditer
+    build = ""
+    last_start_token = 0
+    last_end_token = 0
+    found =True
+    for place in tkr(a_str):
+        code = place.group()[3:-3]
+        build += a_str[last_end_token:place.start()]
+        last_end_token = place.end()
+        res = parse(val, code,[])
+        from json import dumps
+        build += res._out if isinstance(res,Value) else dumps(res,indent=4)
+        found = True
+    build += a_str[last_end_token:]
+    return found and build or a_str
+ 
 def tokenize(ops,str):
     atom = dict(
         ALL = r"""(%(STR)s|%(NUM)s|%(OP)s|%(VAR)s)""",
@@ -339,12 +355,6 @@ def parse(ctx, string, data=_SENTINEL):
             cur_pos, current_match = current_match, kwd.start()
             old,last_match = last_match, kwd.end()
             kwd = kwd.groupdict()
-            if len(data)>2 and "<<TERM>>" == data[-1]:
-                # TERM of the code is either end of string
-                # or an OP dumping <<TERM>> and a res in stack
-                data.pop()
-                res= data.pop()
-                break
             if kwd["OP"]:
                 # balck magic
                 print "BEFORE APPLYING %d, %s" %(i, kwd["OP"])
@@ -353,6 +363,11 @@ def parse(ctx, string, data=_SENTINEL):
                 print "AFTER %(OP)s" % kwd
                 display(data)
                 print
+            if len(data)>2 and "<<TERM>>" == data[-1]:
+                # TERM of the code is either end of string
+                # or an OP dumping <<TERM>> and a res in stack
+                data.pop()
+                return data[-1] 
             if kwd["NUM"]:
                 # no : in num regexp, so I can do it
                 val, tag = kwd["NUM"].split(":")
@@ -364,29 +379,69 @@ def parse(ctx, string, data=_SENTINEL):
             if kwd["VAR"]:
                 # dont use "safe_substitute" it is unsafe
                 data+= [ V(Template(kwd["VAR"],).substitute(ctx), kwd["VAR"][1:]) ]
+        if not res:
+            res = data.pop() if len(data) else ""
+        return res
     except Exception as e:
+        import sys, traceback
+        exc_type, exc_value, exc_traceback = sys.exc_info()
         before = string[:current_match]
         current = string[current_match:last_token]
         after = string[last_token:]
         toprint= "**".join([before, current, after])
         print toprint
+        
+        print "".join(traceback.format_tb(exc_traceback))
         print "<%s> triggered EXCP %s" % (current.strip(), e)
-    display( data )
-    if res:
-        from json import dumps
-        print dumps(to_dict(data), indent=4)
-        return res
+    finally:
+        del(data)
 
-print parse(dict(a=1, b=2),'''
 
-"accentué":accent +1.23:exist +12:int "AZE":a_string +123:a_number $a $b >NUM SWAP 
-"a_string":_key GET "a":another_key
-"toto":_miss_get GET CAT "data":_tag TAG  TOP
-1:thos 1.2:notavala 3:val 1:_totest 3:sizeo_compare MATCH IFT "FUN":_str
-"SWAP,EJOIN":test_eval EVAL "toto":AZE 
+print templatize(dict(price=1, q=3, vat=19.6, name="super carcajou", country="FR"),'''
+<:
+"hello":world
+:> ici <:
+    $name
+:> has
+<:
+    $price >NUM
+    $q >NUM MUL
+    $vat >NUM 100:_per_cent_to_per_one DIV 
+    1:_having_price_AND_vat ADD
+    MUL
+    >STR
+    " ":_separator
+    CAT
+    "comment in string and drop":_or_in_tag
+    DROP
 
-''')
-print parse(dict(a=1, b=2),'''
+    "€":_cur
+    "$":_cur
+    $country
+    "FR":_cocorico
+    1:_why_do_eq_when_you_can_do_n_eq_ok_1_do_only_one
+    MATCH
+    IFT
+    CAT :>
+may I have a dict please? <:
+    $price >NUM
+    3:_ MUL
+    $q
+    "a string":with_a_name
+    "ignored":_because_tag_starts_with_
+    1231231231231231:a_long_int
+    DUP
+    DUP
+    MUL
+    2.0: MUL 
+    "vlong":_new_name
+    TAG
+    EDICT
+:>  ....  
+<: "fin": :>
+end''')
+
+"""print parse(dict(a=1, b=2),'''
 
 +1.23:exist syntax_error_lololol +12:int "AZE":a_string +123:a_number $a $b >NUM SWAP 
 "a_string":_key GET "a":another_key
@@ -395,4 +450,4 @@ print parse(dict(a=1, b=2),'''
 "SWAP,EJOIN:test_eval EVAL "toto":AZE 
 
 ''')
-
+"""

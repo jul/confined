@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 from decimal import Decimal as NUM, getcontext, setcontext, Inexact, Rounded, Context
-from operator import mul as MUL, div as DIV, add as ADD, sub as SUB
+from operator import mul, div, sub, add
 from string import Template
 from functools import wraps
 
@@ -48,7 +48,7 @@ def must_return_value(f):
 ctx = getcontext()
 
 dispatch_op = dict( 
-    MUL = MUL, DIV=DIV, ADD=ADD, SUB=SUB
+    MUL = mul, DIV=div, ADD=add, SUB=sub,
 )
 def pop(n):
     def fr(stack):
@@ -168,6 +168,7 @@ def num_op(op):
         stack += [ Value(NUM(dispatch_op[op](*pop_val(2)(stack)))) ]
     return do_op
 
+
 @check_type("str", "str")
 def cat(stack):
     stack+= [ Value("".join(pop_val(2)(stack))) ]
@@ -206,7 +207,6 @@ def get(stack):
         stack += [ V(N((abs(pos)-1)), "_findex") ]
         display(stack)
         rotn(stack)
-
 @check_type("num")
 def rotn(stack):
     rpos = -(stack.pop().int)
@@ -240,12 +240,35 @@ import operator
 def edict(stack):
     print "EXITING"
     stack+=[ to_dict(stack), "<<TERM>>" ]
+two_num = check_type("num", "num")
+
+
+def apply_(f):
+    @two_num
+    def do(stack):
+        stack += [V(N(f(*pop_val(2)(stack))))]
+    return do
+
+@check_type("num")
+def not_(stack):
+    l = stack[-1]
+    l.val = N(not(l.val))
+
+@check_type("str")
+def in_(stack):
+    needle, haystack = pop_val(2)(stack)
+    stack += [ true if int(needle in haystack) else false ]
 
 ops = { name : num_op(name) for name in dispatch_op }
 ops.update({
        ">NUM" : to_num,
        ">STR" : to_str,
        "CAT" : cat,
+        "OR" : apply_(lambda x,y: x or y),
+        "AND" : apply_(lambda x,y: x and y),
+        "CMP" : apply_(lambda x,y: cmp(x, y)),
+        "IN" : in_,
+        "NOT" : not_,
        "TAG" : tag,
        "IFT" : ift,
        "MATCH" : match,
@@ -293,13 +316,17 @@ def tokenize(ops,str):
         re.MULTILINE|re.VERBOSE|re.I)
     return regexp.finditer(str)
 
-def parse(ctx, string, data=[]):
+_SENTINEL = object()
+def parse(ctx, string, data=_SENTINEL):
+    if data is _SENTINEL:
+        data = []
     res = None
     last_match=0
     current_match=0
     cur_pos = 0
     last_token = 0 
     Value.encoding="utf8"
+    display(data)
     try:
         for i,kwd in enumerate(tokenize(ops, string)):
             last_unrecognized = string[last_match:kwd.start()]
@@ -368,3 +395,4 @@ print parse(dict(a=1, b=2),'''
 "SWAP,EJOIN:test_eval EVAL "toto":AZE 
 
 ''')
+

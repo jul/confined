@@ -5,6 +5,7 @@ import sys
 import unittest
 from confined import parse, templatize
 
+
 feval = lambda rpn: templatize(dict(
         a=1,
         b=2,

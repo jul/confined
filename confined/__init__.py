@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
+from __future__ import absolute_import
+
 import re
 from decimal import Decimal as NUM, getcontext, setcontext, Inexact, Rounded, Context
 from json import dumps
@@ -7,7 +9,7 @@ from operator import mul, div, sub, add
 from string import Template
 from functools import wraps
 
-from check_arg import valid_and_doc, default_doc_maker
+from .check_arg import valid_and_doc, default_doc_maker
 
 def must_be_in(whitelist):
     def must_be_in(a):

@@ -83,6 +83,7 @@ Changelog
 * 0.1.1 initial release
 * 0.1.2 going to fast, mis clicked a button in pypi
 * 0.1.4 forgot howto declare requirements
+* 0.1.9 after too many failure, embedding check_arg in this
 
 Roadmap before 1.0.0
 ********************

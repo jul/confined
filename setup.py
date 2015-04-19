@@ -23,7 +23,7 @@ setup(
         license="License :: OSI Approved :: BSD License",
         description="Sage templating language with bounded resource",
         long_description=open("README.rst").read(),
-        install_requires=[ "check_arg",  ],
+        install_requires=[ open("requirements.txt").read(),  ],
         classifiers=[
           'Development Status :: 4 - Beta',
           'Intended Audience :: Developers',

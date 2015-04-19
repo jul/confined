@@ -21,7 +21,7 @@ so that remote it is safe to pass it
 Usage
 =====
 
-Example:
+Example::
 
     print templatize(dict(
         price=1, 

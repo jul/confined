@@ -9,5 +9,5 @@ python:
 install:
   - pip install . 
 script:
- - echo 1
+ - python setup develop
  

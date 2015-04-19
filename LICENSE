@@ -1,6 +1,30 @@
 Copyright (c) 2015, julien tayon
 All rights reserved.
 
+The name of this design is confined. For this part I use all the moral rights
+given by the bern/geneva convention to make sure my incessible moral rights are enforced
+on the topic of the conceptual integrity. I am the only person on earth that can
+call this stuff «confined» and only patches I reviewed or made are ok.
+Any use of this terms and code with the claims its confined with substancial 
+modifications according to the latest release breaking the confinment is a fraud and 
+violates my moral right on the concept. As such I hereby tell you that I will be even 
+worse than Poutin with the ukranians if you dare me.
+
+You can check with your legal department.
+
+When available the core specifications will have to be enforced for any derived works
+to claim the name.
+
+And I hereby state that I will not let the eval function/call stack be infinite.
+For now it is one, and it is fine with me.
+
+The purpose of this is to make sure performance and memory use are confined
+and user interactions have NO way to do system calls.
+
+It is by design that the final version will FORCE you to state the max size of the stack,
+the max size of the script that can be inputed.
+
+
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
@@ -10,6 +34,7 @@ modification, are permitted provided that the following conditions are met:
 * Redistributions in binary form must reproduce the above copyright notice,
   this list of conditions and the following disclaimer in the documentation
   and/or other materials provided with the distribution.
+
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE

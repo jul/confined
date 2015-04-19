@@ -303,7 +303,8 @@ def get_string(expr):
 
 
 def templatize(val,a_str,**kw):
-    pat = re.compile(r'''(?P<CODE><: (((?!:>).)*) :>)''',re.DOTALL|re.VERBOSE)
+    pat = re.compile(r'''(?P<CODE><: (((?!(:>|%(string)s)).)*) :>)''' %
+base_type % base_type,re.DOTALL|re.VERBOSE)
     tkr = pat.finditer
     build = ""
     last_start_token = 0
@@ -397,7 +398,9 @@ def parse(ctx, string, data=_SENTINEL):
         del(data)
 
 
-print templatize(dict(price=1, q=3, vat=19.6, name="super carcajou", country="FR"),'''
+print templatize(dict(
+    price=1, q=3, vat=19.6, name="super carcajou", country="FR"),
+'''
 <:
 "hello":world
 :> ici <:

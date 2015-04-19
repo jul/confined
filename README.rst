@@ -64,6 +64,7 @@ Example::
     end''')
 
 Gives ::
+
     hello ici super carcajou has
     18.31 €
     may I have a dict please? {

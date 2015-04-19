@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: "utf-8" -*-
 
-from setuptools import setup, find_packages
+from distutils.core import setup
+
 import sys
 if "install" in sys.argv or "setup" in sys.argv or "sdist" in sys.argv:
     from confined import test_valid

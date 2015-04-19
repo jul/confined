@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: "utf-8" -*-
 
+#from setuptools import setup, find_packages
 from distutils.core import setup
 
 import sys
@@ -22,14 +23,14 @@ if "install" in sys.argv or "setup" in sys.argv or "sdist" in sys.argv:
 
 setup(
         name='confined',
-        version='0.1.9',
+        version='0.1.10',
         author='Julien Tayon',
         author_email='julien@tayon.net',
         packages=['confined'],
         url='http://github.org/jul/confined',
         license="License :: OSI Approved :: BSD License",
         description="Sage templating language with bounded resource",
-        long_description=open("README.rst").read(),
+        long_description=open("README.txt").read(),
         requires=[   ],
         classifiers=[
           'Development Status :: 4 - Beta',
@@ -41,4 +42,4 @@ setup(
           ],
 )
 
-
+print open("README.txt").read()

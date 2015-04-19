@@ -1,5 +1,4 @@
 include confined/*py
-include README.rst
-include README
+include README*
 include LICENSE
 include requirements.txt

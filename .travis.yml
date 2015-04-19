@@ -7,7 +7,5 @@ python:
 #  - "3.3"
 #  not available in travis 
 install:
-  - pip install . 
-script:
- - python setup develop
+  - pip install -r requirements.txt
  

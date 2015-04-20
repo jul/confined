@@ -18,7 +18,7 @@ so that you don't have to fear to give your user the possibility to execute
 arbitrary code on your servers.
 
 The language is mapping its input/internal stack to immutable data structures
-so that remote it is safe to pass it 
+so the state of the execution can be safely transported for continuation. 
 
 Usage
 =====
@@ -103,3 +103,4 @@ Roadmap before 1.0.0
 * handle the precisions and formating of Decimal
 * enough tests to feel secure
 * python 3
+* implements ESNAPSHOT dump context, input, stack in an immutable format to pass for remote continuation

@@ -4,6 +4,8 @@ Confined: a safe resource bound immutable interpreter
 
 * source: https://github.com/jul/confined
 * ticketing: https://github.com/jul/confined/issues
+* design choices: http://beauty-of-imagination.blogspot.ca/2015/04/so-i-wrote-proof-of-concept-language-to.html
+* rationale: the safe eval probem http://beauty-of-imagination.blogspot.ca/2015/04/eval-is-even-more-really-dangerous-than.html
 
 .. image:: 
    https://travis-ci.org/jul/confined.png

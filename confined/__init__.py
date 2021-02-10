@@ -5,7 +5,7 @@ from __future__ import absolute_import
 import re
 from decimal import Decimal as NUM, getcontext, setcontext, Inexact, Rounded, Context
 from json import dumps
-from operator import mul, div, sub, add
+from operator import mul, truediv as div, sub, add
 from string import Template
 from functools import wraps
 
@@ -75,7 +75,7 @@ class Value(object):
     prec = 2
     encoding="utf8"
 
-    @can_be({str,unicode,NUM}, {str})
+    @can_be({str,NUM}, {str})
     def __init__(self, val, tag=''):
         self.tag, self.val= tag, val
 
@@ -104,7 +104,7 @@ class Value(object):
 
     @property
     def str(self):
-        return self._out.decode(Value.encoding) if self.type == "str" else str(self._out)
+        return str(self._out)
 
     def __repr__(self):
         return "".join(["<Val:type='", self.type,"' val=",self._out[:10] +
@@ -198,11 +198,11 @@ def tag(stack):
 
 def display(stack):
     """TODO : use the context with log to compute the %xd"""
-    print "******************************************"
+    print ("******************************************")
     for i, v in enumerate(stack):
         rel = len(stack)
-        print "| %3d | %r" % (rel - i -1, v)
-    print "******************************************"
+        print( "| %3d | %r" % (rel - i -1, v))
+    print ("******************************************")
 
 def top(stack):
     """use the top of the stack as a stack where to put/fetch stuff"""
@@ -238,6 +238,9 @@ def rotn(stack):
     stack[rpos:] = stack[rpos+1:]
     stack += [ pivot  ]
 
+def nop(stack):
+    pass
+
 def swap(stack):
     stack[-2], stack[-1] = stack[-1], stack[-2] 
 
@@ -265,12 +268,12 @@ def ejoin(stack):
     """
     leaves the interpreter and return a join string of all the arguments
     """
-    print "EXITING"
+    print( "EXITING")
     stack += [ "&".join([ "=".join([v.tag,v.str]) for v in stack if not
         v.tag.startswith("_") and v.tag != "" ]),  "<<TERM>>" ]
 
 def edict(stack):
-    print "EXITING"
+    print( "EXITING")
     stack+=[ to_dict(stack), "<<TERM>>" ]
 
 two_num = check_type("num", "num")
@@ -315,6 +318,7 @@ ops.update({
        "TOP" : top,
        "DROP" : drop,
        "SWAP" : swap,
+       "NOP" : nop,
        "GET" : get,
        "LEN" : leng,
        "EJOIN" : ejoin,
@@ -395,12 +399,12 @@ def parse(ctx, string, data=_SENTINEL):
             kwd = kwd.groupdict()
             if kwd["OP"]:
                 # balck magic
-                print "BEFORE APPLYING %d, %s" %(i, kwd["OP"])
+                print( "BEFORE APPLYING %d, %s" %(i, kwd["OP"]) )
                 display(data)
                 ops[kwd["OP"]](data)
-                print "AFTER %(OP)s" % kwd
+                print( "AFTER %(OP)s" % kwd )
                 display(data)
-                print
+                print()
             if len(data)>2 and "<<TERM>>" == data[-1]:
                 # TERM of the code is either end of string
                 # or an OP dumping <<TERM>> and a res in stack
@@ -428,14 +432,14 @@ def parse(ctx, string, data=_SENTINEL):
         current = string[current_match:last_token]
         after = string[last_token:]
         toprint= "**".join([before, current, after])
-        print toprint
-        print "".join(traceback.format_tb(exc_traceback))
-        print "<%s> triggered EXCP %s" % (current.strip(), e)
+        print( toprint)
+        print( "".join(traceback.format_tb(exc_traceback)))
+        print( "<%s> triggered EXCP %s" % (current.strip(), e))
     finally:
         del(data)
 
-if __name__ == '__name__':
-    print templatize(dict(
+if __name__ == '__main__':
+    print( templatize(dict(
         price=1, q=3, vat=19.6, name="super carcajou", country="FR"),
     '''
     <:
@@ -470,7 +474,7 @@ if __name__ == '__name__':
         EDICT
     :>  ....
     <: "fin": :>
-    end''')
+    end'''))
 
 """print parse(dict(a=1, b=2),'''
 

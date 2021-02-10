@@ -10,11 +10,11 @@ if "install" in sys.argv or "setup" in sys.argv or "sdist" in sys.argv:
     from confined import test_check_arg
     import unittest
     loader= unittest.TestLoader()
-    print "TESTING Check_arg"
+    print( "TESTING Check_arg")
     suite=loader.loadTestsFromModule(test_check_arg)
     runner=unittest.TextTestRunner(verbosity=2)
     result=runner.run(suite)
-    print "TESTING confined"
+    print( "TESTING confined")
     suite=loader.loadTestsFromModule(test_valid)
     runner=unittest.TextTestRunner(verbosity=2)
     result=runner.run(suite)
@@ -42,4 +42,4 @@ setup(
           ],
 )
 
-print open("README.txt").read()
+print( open("README.txt").read())

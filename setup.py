@@ -23,7 +23,7 @@ if "install" in sys.argv or "setup" in sys.argv or "sdist" in sys.argv:
 
 setup(
         name='confined',
-        version='0.1.11',
+        version='0.1.12',
         author='Julien Tayon',
         author_email='julien@tayon.net',
         packages=['confined'],
@@ -31,6 +31,10 @@ setup(
         license="License :: OSI Approved :: BSD License",
         description="Safe Forth inspired templating language",
         long_description=open("README.txt").read(),
+        entry_points = {
+        #'console_scripts': ['console=confined.console:main'],
+        'console_scripts': ['confineds=confined:console'],
+        },
         requires=[   ],
         classifiers=[
           'Development Status :: 4 - Beta',

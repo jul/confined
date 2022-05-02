@@ -416,7 +416,7 @@ def parse(ctx, string, data=_SENTINEL, dbg=False):
     cur_pos = 0
     last_token = 0
     Value.encoding="utf8"
-    dbg and display(data)
+    #dbg and data and display(data)
     last_unrecognized=""
     toprint=""
     try:
@@ -436,10 +436,10 @@ def parse(ctx, string, data=_SENTINEL, dbg=False):
             kwd = kwd.groupdict()
             if kwd["OP"]:
                 # balck magic
-                dbg and print( "BEFORE APPLYING %d, %s" %(i, kwd["OP"]) )
-                dbg and display(data)
+                #dbg and print( "BEFORE APPLYING %d, %s" %(i, kwd["OP"]) )
+                #dbg and display(data)
                 ops[kwd["OP"]](data)
-                dbg and print( "AFTER %(OP)s" % kwd )
+                #dbg and print( "AFTER %(OP)s" % kwd )
             if len(data)>2 and "<<TERM>>" == data[-1]:
                 # TERM of the code is either end of string
                 # or an OP dumping <<TERM>> and a res in stack
@@ -475,7 +475,7 @@ def parse(ctx, string, data=_SENTINEL, dbg=False):
                 string[kwd.end():]
             data+=[V("\nUNRECOGNIZED TOKEN >%s< \n====================\n%s\n===================\n" % (last_unrecognized, toprint), "ERROR")]
         if not res:
-            res = data.pop() if len(data) else ""
+            res = data[-1] if len(data) else ""
         return res
 
     except Exception as e:
@@ -492,4 +492,27 @@ def parse(ctx, string, data=_SENTINEL, dbg=False):
         
     finally:
         del(data)
+
+def console():
+    stack = []
+#while(s:= input('CONF> ')):
+#    if s.strip().lower() in { "quit", "bye", "exit","q", "\q" }:
+#        break
+#    parse({},s,data=stack, dbg=True)
+
+    from prompt_toolkit import prompt
+    from prompt_toolkit.history import FileHistory
+    from prompt_toolkit.completion import WordCompleter
+
+    while s := prompt(u'CONF# ',
+                            history=FileHistory('confined.txt'),
+                            completer=WordCompleter(
+                            ['MUL', 'DIV', 'ADD', 'SUB', '>NUM', '>STR', 'CAT', 'XOR', 'OR', 'AND', 'CMP',
+                             'IN', 'NOT', 'TAG', 'IFT', 'MATCH', 'ROT', 'DUP', 'TOP', 'DROP', 'SWAP',
+                             'OVER', 'NOP', 'GET', 'LEN', 'EJOIN', 'EDICT', 'EVAL', '<<TERM>>']),
+                            complete_while_typing=True,
+                            ):
+        if s.strip().lower() in { "quit", "bye", "exit","q", "\q" }:
+            break
+        parse({},s,data=stack, dbg=True)
 

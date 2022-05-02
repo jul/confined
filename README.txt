@@ -27,6 +27,9 @@ For usage::
 
     python confined -mconfined -h
 
+The environment can be experimented with **confineds** (a confined shell provided
+with the module) (requires prompt_toolkit)
+
 Can also be used programmatically
 
 Example::
@@ -104,8 +107,7 @@ Roadmap before 1.0.0
 * ensuring that stack is controled in size 
 * handle Decimal nitroglycerine correctly so that users CAN multiply safely
 * Having a cheatsheet for the language
-* create a loads/dumps to be able to serialize code from a user for remote
-     execution
+* create a loads/dumps to be able to serialize code from a user for remote execution
 * limiting the size of the input scripts
 * using only iterator to be able to do nth repeated operation without copying everything in memory
 * handle versions compatibility for remote execution

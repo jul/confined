@@ -23,13 +23,13 @@ Usage
 
 can be used like python -mconfined
 
-For usage:
+For usage::
 
     python confined -mconfined -h
 
 Can also be used programmatically
 
-Example:
+Example::
 
     print templatize(dict(
         price=1, 

@@ -29,7 +29,7 @@ setup(
         packages=['confined'],
         url='http://github.org/jul/confined',
         license="License :: OSI Approved :: BSD License",
-        description="Sage templating language with bounded resource",
+        description="Safe Forth inspired templating language",
         long_description=open("README.txt").read(),
         requires=[   ],
         classifiers=[
@@ -37,6 +37,7 @@ setup(
           'Intended Audience :: Developers',
           'License :: OSI Approved :: Python Software Foundation License',
           'Programming Language :: Python :: 2.7',
+          'Programming Language :: Python :: 3.9',
           'Operating System :: OS Independent',
           'Programming Language :: Python',
           ],

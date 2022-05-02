@@ -428,8 +428,8 @@ def parse(ctx, string, data=_SENTINEL, dbg=False):
                 # BUG DOES NOT SEE LAST SYNTAX ERROR IN FILE (ignored)
                 toprint=string[0:last_match] + " >%s< " % last_unrecognized + \
                     string[kwd.pos:]
-                display(stack)
                 data+=[V("\nUNRECOGNIZED TOKEN >%s< \n====================\n%s\n===================\n" % (last_unrecognized, toprint), "ERROR")]
+                print("\n")
                 break
                 #raise Exception("Un parsed expression **%s** in %s" %
                 #    (last_unrecognized, toprint))
@@ -463,6 +463,8 @@ def parse(ctx, string, data=_SENTINEL, dbg=False):
                 toprint=string[0:last_match] + " >%s< " % last_unrecognized + \
                     string[kwd.pos:]
                 data+=[V("\nUNRECOGNIZED TOKEN >%s< \n====================\n%s\n===================\n" % (last_unrecognized, toprint), "ERROR")]
+                print('\n')
+                print('\n')
                 break
                 #raise Exception("Un parsed expression **%s** in %s" %
                 #    (last_unrecognized, toprint))
@@ -471,7 +473,6 @@ def parse(ctx, string, data=_SENTINEL, dbg=False):
         if last_unrecognized.strip():# and not parse_base["VOID"](last_unrecognized):
             toprint=string[0:last_match] + " >%s< " % last_unrecognized + \
                 string[kwd.end():]
-            display(stack)
             data+=[V("\nUNRECOGNIZED TOKEN >%s< \n====================\n%s\n===================\n" % (last_unrecognized, toprint), "ERROR")]
         if not res:
             res = data.pop() if len(data) else ""

@@ -4,14 +4,47 @@ from __future__ import absolute_import
 from confined import *
 import argparse
 from json import dumps, loads
-from sys import argv, stdin
+from sys import argv, stdin, exit
 
-parser = argparse.ArgumentParser(description='Templatize a confined page')
+parser = argparse.ArgumentParser(
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    description='''
+Templatize a confined page
+==========================
+
+cf https://github.com/jul/confined
+
+If no input file are given use stdin
+
+Example
+------
+
+INPUT *************************************************************
+
+cat <<'EOF' | python3 -i -mconfined  -j '{"name" : "jul", "f" : 1}' 
+hello my name is <: $name "ie": "n": $f  DUP >NUM IFT  CAT CAT :>
+j+1 = <: $f >NUM 1: ADD :>
+what if I made a syntax error ? <: 1: 2:
+BOOM 3: :>
+EOF
+
+OUTPUT ************************************************************
+
+hello my name is julien
+j+1 = 2.0
+what if I made a syntax error ? 
+UNRECOGNIZED TOKEN >BOOM< 
+====================
+ 1: 2: >BOOM<  
+===================
+
+*********************************************************************
+
+''')
 parser.add_argument('-json', default='',help="json with a dict for the template")
 parser.add_argument('file', nargs='?', help='optional file to interpret else use stdin')
 res=parser.parse_args()
 
-print(res)
 def usage(status=0):
     parser.print_help()
     exit(status)

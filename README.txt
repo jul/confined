@@ -21,6 +21,14 @@ so that remote it is safe to pass it
 Usage
 =====
 
+can be used like python -mconfined
+
+For usage:
+
+    python confined -mconfined -h
+
+Can also be used programmatically
+
 Example:
 
     print templatize(dict(

@@ -4,8 +4,6 @@ Confined: a safe resource bound immutable interpreter
 
 * source: https://github.com/jul/confined
 * ticketing: https://github.com/jul/confined/issues
-* design choices: http://beauty-of-imagination.blogspot.ca/2015/04/so-i-wrote-proof-of-concept-language-to.html
-* rationale: the safe eval probem http://beauty-of-imagination.blogspot.ca/2015/04/eval-is-even-more-really-dangerous-than.html
 
 .. image:: 
    https://travis-ci.org/jul/confined.png
@@ -18,12 +16,20 @@ so that you don't have to fear to give your user the possibility to execute
 arbitrary code on your servers.
 
 The language is mapping its input/internal stack to immutable data structures
-so the state of the execution can be safely transported for continuation. 
+so that remote it is safe to pass it 
 
 Usage
 =====
 
-Example::
+can be used like python -mconfined
+
+For usage:
+
+    python confined -mconfined -h
+
+Can also be used programmatically
+
+Example:
 
     print templatize(dict(
         price=1, 
@@ -65,8 +71,7 @@ Example::
     <: "fin": :>
     end''')
 
-Gives ::
-
+Gives : 
     hello ici super carcajou has
     18.31 €
     may I have a dict please? {
@@ -82,17 +87,19 @@ Gives ::
 Changelog
 =========
 
-* 0.1.0 initial release oops forgot __name__ == main
-* 0.1.1 initial release
-* 0.1.2 going to fast, mis clicked a button in pypi
-* 0.1.4 forgot howto declare requirements
-* 0.1.9 after too many failure, embedding check_arg in this
+* 0.1.0     initial release oops forgot __name__ == main
+* 0.1.1     initial release
+* 0.1.2     going to fast, mis clicked a button in pypi
+* 0.1.4     forgot howto declare requirements
+* 0.1.9     after too many failure, embedding check_arg in this
+* 0.1.10    python3 (overdue)
+            improved error handling
+            bug fixed in templating
 
 Roadmap before 1.0.0
 ********************
 
-* ensuring that stack is controled in size
-* handle string in a nice way. I want ot be able to mix latin1/chinese in Input
+* ensuring that stack is controled in size 
 * handle Decimal nitroglycerine correctly so that users CAN multiply safely
 * Having a cheatsheet for the language
 * create a loads/dumps to be able to serialize code from a user for remote
@@ -102,5 +109,14 @@ Roadmap before 1.0.0
 * handle versions compatibility for remote execution
 * handle the precisions and formating of Decimal
 * enough tests to feel secure
-* python 3
-* implements ESNAPSHOT dump context, input, stack in an immutable format to pass for remote continuation
+
+Bigger roadmap
+**************
+
+Affter reading this https://compudanzas.net/uxn_tutorial.html I want to make a virtual machine
+that is fun to work with for a kid.
+I want to add the possibility to extend the language both in python to create interfaces/drivers
+and in the language itslef (like in tcl).
+
+
+

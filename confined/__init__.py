@@ -23,10 +23,12 @@ def positional_can_be(*wanted_type):
         argl = list(arg)[1:]
         for pos, argu in enumerate(argl):
             if not any(map(lambda pt: isinstance(argu, pt),wanted_ptype[pos] )):
+                display(*arg)
                 raise Exception("%r is not of type %r" % (
                     argu, wanted_ptype[pos]
                 ))
     return positional_can_be
+
 
 def last_types_in_stack_must_be(*wanted_type):
     def last_types_in_stack_must_be(*arg):
@@ -34,10 +36,18 @@ def last_types_in_stack_must_be(*wanted_type):
         for i, type in enumerate(reversed(wanted_type)):
             i += 1
             if a[-i].type != type:
-                raise Exception("%s is not of type %s" % (a[-i], type))
+                display(*arg)
+                raise Exception("CONFINED ERROR:%s is not of type %s" % (a[-i], type))
     return last_types_in_stack_must_be
 
+def min_stack_size(size):
+    def min_stack_size(stack):
+        if len(stack)<size:
+            display(stack)
+            raise Exception("CONFINED ERROR:Stack is too small %d argument required, stack has %d element" % (size,len(stack)))
+    return min_stack_size
 
+min_stack = valid_and_doc(min_stack_size)
 check_type = valid_and_doc(last_types_in_stack_must_be)
 can_be = valid_and_doc(positional_can_be)
 whitelist = valid_and_doc(must_be_in)
@@ -55,6 +65,7 @@ dispatch_op = dict(
 )
 
 def pop(n):
+    @min_stack(n)
     def fr(stack):
         return [ stack.pop() for i in range(n) ]
     return fr
@@ -62,7 +73,7 @@ def pop(n):
 def pop_val(n):
     def fr(stack):
         return [ stack.pop().val for i in range(n) ]
-    return fr
+    return min_stack(n)(fr)
 
 def is_int(decimal):
     try:
@@ -107,17 +118,20 @@ class Value(object):
         return str(self._out)
 
     def __repr__(self):
-        return "".join(["<Val:type='", self.type,"' val=",self._out[:10] +
-( len(self._out)>10 and "..." or "")," tag='%(tag)s'>" % (self.__dict__)])
+        quote = self.type == "str" and '"' or ""
+        return "".join([quote, self._out[:10] +
+( len(self._out)>10 and "..." or ""),quote, ":%(tag)s" % (self.__dict__)])
 
 N,V = NUM, Value
 
+@min_stack(1)
 @check_type("str")
 def to_num(stack):
     """Convert the last element of the stack from a string to a num"""
     value = stack[-1]
     value.val = N(value.val)
 
+@min_stack(1)
 @check_type("num")
 def to_str(stack):
     """Convert the last element of the stack from a a num to a string"""
@@ -130,6 +144,7 @@ def to_dict(stack):
     """convert a stack to a dict"""
     return { v.tag: v._out for v in stack if v.tag and not v.tag[0] == ("_") }
 
+@min_stack(3)
 @check_type("num")
 def ift(stack):
     """ If then else expects in the stack
@@ -141,6 +156,7 @@ def ift(stack):
     true, false, val = reversed(pop(3)(stack))
     stack += [ true if bool(val.val) else false ]
 
+@min_stack(2)
 @check_type("num")
 def match(stack):
     """tells how much time an the reference has match any of the n value above
@@ -185,6 +201,7 @@ def num_op(op):
 def cat(stack):
     stack+= [ Value("".join(reversed(pop_val(2)(stack)))) ]
 
+@min_stack(2)
 @check_type("str")
 def tag(stack):
     """ give the tag name to the last value
@@ -223,7 +240,6 @@ def get(stack):
         pos -= 1
     if found:
         stack += [ V(N((abs(pos)-1)), "_findex") ]
-        display(stack)
         rotn(stack)
 
 @check_type("num")
@@ -242,14 +258,22 @@ def nop(stack):
     pass
 
 def swap(stack):
-    stack[-2], stack[-1] = stack[-1], stack[-2] 
+    """ a b => b a """
+    stack[-1], stack[-2] = stack[-2], stack[-1]
 
+def over(stack):
+    """ a b OVER => a b a """
+    stack += [ stack[-2], ]
+
+@min_stack(1)
 def drop(stack):
+    """ ... x DROP => ... """
     stack.pop()
 
+@min_stack(1)
 def dup(stack):
     """
-    duplicate last element on stack
+    .... a DUP => ... a a
     """
     stack += [ stack[-1] ]
 
@@ -277,16 +301,16 @@ def edict(stack):
     stack+=[ to_dict(stack), "<<TERM>>" ]
 
 two_num = check_type("num", "num")
+one_num = check_type("num")
 
-def apply_(f):
-    """Convenience function to apply f(S[-1], [-2]) => Num
-    TODO add a function to check type returned
-    TODO bis: Docs of the function as a 3rd arg
+def apply_(f, consume=2, chek_input=two_num, check_output=last_types_in_stack_must_be("num")):
+    """Convenience function to apply f(S[-1], [-2], ...) and push it on stack
     """
-    @two_num
     def do(stack):
-        stack += [V(N(f(*reversed(pop_val(2)(stack)))))]
-    return do
+        stack += [V(N(f(*reversed(pop_val(consume)(stack)))))]
+        check_output(stack)
+
+    return two_num(do)
 
 @check_type("num")
 def not_(stack):
@@ -305,8 +329,9 @@ ops.update({
        ">NUM" : to_num,
        ">STR" : to_str,
        "CAT" : cat,
-       "OR" : apply_(lambda x,y: x or y),
-       "AND" : apply_(lambda x,y: x and y),
+       "XOR" : apply_(lambda x,y: N(int(x) ^ int(y))),
+       "OR" : apply_(lambda x,y: N(int(x) | int(y))),
+       "AND" : apply_(lambda x,y: N(int(x) & int(y))),
        "CMP" : apply_(lambda x,y: cmp(x, y)),
        "IN" : in_,
        "NOT" : not_,
@@ -318,6 +343,7 @@ ops.update({
        "TOP" : top,
        "DROP" : drop,
        "SWAP" : swap,
+       "OVER" : over,
        "NOP" : nop,
        "GET" : get,
        "LEN" : leng,
@@ -345,18 +371,24 @@ def get_string(expr):
 
 
 def templatize(val,a_str,**kw):
-    pat = re.compile(r'''(?P<CODE><: (((?!(:>|%(string)s)).)*) :>)''' %
+    #pat = re.compile(r'''(?P<CODE><:(((?!(:>|%(string)s)).)*):>)''' %
+    pat = re.compile(r'''(?P<CODE><:(((?!(:>)).)*):>)''' %
         base_type % base_type,re.DOTALL|re.VERBOSE)
     tkr = pat.finditer
     build = ""
     last_start_token = 0
     last_end_token = 0
+    first=True
     for place in tkr(a_str):
-        code = place.group()[3:-3]
-        build += a_str[last_end_token:place.start()]
-        last_end_token = place.end()
+        if first:
+            first = False
+            build+=a_str[:place.start()]
+        if last_end_token != last_start_token:
+            build += a_str[last_end_token:place.start()]
+        code = place.group()[2:-2]
         res = parse(val, code,[])
         build += res._out if isinstance(res,Value) else dumps(res,indent=4)
+        last_end_token = place.end()
     build += a_str[last_end_token:]
     return build
 
@@ -374,7 +406,7 @@ def tokenize(ops,str):
 
 _SENTINEL = object()
 
-def parse(ctx, string, data=_SENTINEL):
+def parse(ctx, string, data=_SENTINEL, dbg=False):
     if data is _SENTINEL:
         # fix weired bug in ipython where stack is not destroyed
         data = []
@@ -384,27 +416,30 @@ def parse(ctx, string, data=_SENTINEL):
     cur_pos = 0
     last_token = 0
     Value.encoding="utf8"
-    display(data)
+    dbg and display(data)
+    last_unrecognized=""
+    toprint=""
     try:
-        for i,kwd in enumerate(tokenize(ops, string)):
-            last_unrecognized = string[last_match:kwd.start()]
+        for i,match_kwd in enumerate(tokenize(ops, string)):
+            kwd=match_kwd
+            last_unrecognized = string[last_match:kwd.start()].strip()
             last_token = kwd.end()
-            if last_unrecognized and not parse_base["VOID"](last_unrecognized):
-                toprint=string[0:last_match] + "<%s>" % last_unrecognized + \
-                    string[kwd.end():]
-                raise Exception("Un parsed expression **%s** in %s" %
-                    (last_unrecognized, toprint))
-            cur_pos, current_match = current_match, kwd.start()
-            old,last_match = last_match, kwd.end()
+            if last_unrecognized.strip():
+                # BUG DOES NOT SEE LAST SYNTAX ERROR IN FILE (ignored)
+                toprint=string[0:last_match] + " >%s< " % last_unrecognized + \
+                    string[kwd.pos:]
+                display(stack)
+                data+=[V("\nUNRECOGNIZED TOKEN >%s< \n====================\n%s\n===================\n" % (last_unrecognized, toprint), "ERROR")]
+                break
+                #raise Exception("Un parsed expression **%s** in %s" %
+                #    (last_unrecognized, toprint))
             kwd = kwd.groupdict()
             if kwd["OP"]:
                 # balck magic
-                print( "BEFORE APPLYING %d, %s" %(i, kwd["OP"]) )
-                display(data)
+                dbg and print( "BEFORE APPLYING %d, %s" %(i, kwd["OP"]) )
+                dbg and display(data)
                 ops[kwd["OP"]](data)
-                print( "AFTER %(OP)s" % kwd )
-                display(data)
-                print()
+                dbg and print( "AFTER %(OP)s" % kwd )
             if len(data)>2 and "<<TERM>>" == data[-1]:
                 # TERM of the code is either end of string
                 # or an OP dumping <<TERM>> and a res in stack
@@ -421,6 +456,23 @@ def parse(ctx, string, data=_SENTINEL):
             if kwd["VAR"]:
                 # dont use "safe_substitute" it is unsafe
                 data+= [ V(Template(kwd["VAR"],).substitute(ctx), kwd["VAR"][1:]) ]
+            dbg and display(data)
+            kwd=match_kwd
+            if last_unrecognized.strip():
+                # BUG DOES NOT SEE LAST SYNTAX ERROR IN FILE (ignored)
+                toprint=string[0:last_match] + " >%s< " % last_unrecognized + \
+                    string[kwd.pos:]
+                data+=[V("\nUNRECOGNIZED TOKEN >%s< \n====================\n%s\n===================\n" % (last_unrecognized, toprint), "ERROR")]
+                break
+                #raise Exception("Un parsed expression **%s** in %s" %
+                #    (last_unrecognized, toprint))
+            cur_pos, current_match = current_match, kwd.start()
+            old,last_match = last_match, kwd.end()
+        if last_unrecognized.strip():# and not parse_base["VOID"](last_unrecognized):
+            toprint=string[0:last_match] + " >%s< " % last_unrecognized + \
+                string[kwd.end():]
+            display(stack)
+            data+=[V("\nUNRECOGNIZED TOKEN >%s< \n====================\n%s\n===================\n" % (last_unrecognized, toprint), "ERROR")]
         if not res:
             res = data.pop() if len(data) else ""
         return res
@@ -432,57 +484,11 @@ def parse(ctx, string, data=_SENTINEL):
         current = string[current_match:last_token]
         after = string[last_token:]
         toprint= "**".join([before, current, after])
-        print( toprint)
-        print( "".join(traceback.format_tb(exc_traceback)))
-        print( "<%s> triggered EXCP %s" % (current.strip(), e))
+        toprint+= "".join(traceback.format_tb(exc_traceback))
+        toprint+= "<%s> triggered EXCP %s" % (current.strip(), e)
+        data += [ toprint ]
+        print(toprint)
+        
     finally:
         del(data)
 
-if __name__ == '__main__':
-    print( templatize(dict(
-        price=1, q=3, vat=19.6, name="super carcajou", country="FR"),
-    '''
-    <:
-    "hello":world
-    :> ici <:
-        $name
-    :> has
-    <:
-        $price >NUM
-        $q >NUM MUL
-        $vat >NUM 100:_per_cent_to_per_one DIV 
-        1:_having_price_AND_vat ADD MUL >STR
-        " ":_separator
-        CAT
-        "comment in string and drop":_or_in_tag
-        DROP
-        "€":_cur "$":_cur 
-        $country
-        "FR":_cocorico
-        1:_nb_of_lines_for_looking_match
-        MATCH
-        IFT
-        CAT :>
-    may I have a dict please? <:
-        $price >NUM
-        $q
-        "a string":with_a_name
-        "ignored":_because_tag_starts_with_
-        1231231231231231:a_long_int
-        "a new name":_with_space
-        TAG
-        EDICT
-    :>  ....
-    <: "fin": :>
-    end'''))
-
-"""print parse(dict(a=1, b=2),'''
-
-+1.23:exist syntax_error_lololol +12:int "AZE":a_string +123:a_number $a $b >NUM SWAP 
-"a_string":_key GET "a":another_key
-"toto":_miss_get GET CAT "data":_tag TAG  TOP
-1:thos 1.2:notavala 3:val 1:_totest 3:sizeo_compare MATCH IFT "FUN":_str
-"SWAP,EJOIN:test_eval EVAL "toto":AZE 
-
-''')
-"""

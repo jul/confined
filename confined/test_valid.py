@@ -17,7 +17,7 @@ feval = lambda rpn: templatize(dict(
 class TestCheck_Arg(unittest.TestCase):
 
     def test_first(self):
-        self.assertEqual(feval("2: 2: ADD"), "4")
+        self.assertEqual(feval("2: 2: ADD"), "4.0")
 
 
 if __name__ == '__main__':

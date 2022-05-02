@@ -79,17 +79,19 @@ Gives :
 Changelog
 =========
 
-* 0.1.0 initial release oops forgot __name__ == main
-* 0.1.1 initial release
-* 0.1.2 going to fast, mis clicked a button in pypi
-* 0.1.4 forgot howto declare requirements
-* 0.1.9 after too many failure, embedding check_arg in this
+* 0.1.0     initial release oops forgot __name__ == main
+* 0.1.1     initial release
+* 0.1.2     going to fast, mis clicked a button in pypi
+* 0.1.4     forgot howto declare requirements
+* 0.1.9     after too many failure, embedding check_arg in this
+* 0.1.10    python3 (overdue)
+            improved error handling
+            bug fixed in templating
 
 Roadmap before 1.0.0
 ********************
 
-* ensuring that stack is controled in size
-* handle string in a nice way. I want ot be able to mix latin1/chinese in Input
+* ensuring that stack is controled in size 
 * handle Decimal nitroglycerine correctly so that users CAN multiply safely
 * Having a cheatsheet for the language
 * create a loads/dumps to be able to serialize code from a user for remote
@@ -99,4 +101,14 @@ Roadmap before 1.0.0
 * handle versions compatibility for remote execution
 * handle the precisions and formating of Decimal
 * enough tests to feel secure
-* python 3
+
+Bigger roadmap
+**************
+
+Affter reading this https://compudanzas.net/uxn_tutorial.html I want to make a virtual machine
+that is fun to work with for a kid.
+I want to add the possibility to extend the language both in python to create interfaces/drivers
+and in the language itslef (like in tcl).
+
+
+

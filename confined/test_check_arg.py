@@ -3,7 +3,7 @@ import os
 import sys
 
 import unittest
-from check_arg import valid_and_doc, default_doc_maker
+from .check_arg import valid_and_doc, default_doc_maker
 
 class TestCheck_Arg(unittest.TestCase):
     def setUp(self):

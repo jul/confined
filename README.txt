@@ -93,7 +93,7 @@ Changelog
 * 0.1.4     forgot howto declare requirements
 * 0.1.9     after too many failure, embedding check_arg in this
 * 0.1.10    python3 (overdue)
-            improved error handling
+* 0.1.11    improved error handling (light)
             bug fixed in templating
 
 Roadmap before 1.0.0

@@ -98,9 +98,10 @@ Changelog
 * 0.1.4     forgot howto declare requirements
 * 0.1.9     after too many failure, embedding check_arg in this
 * 0.1.10    python3 (overdue)
-* 0.1.11    improved error handling (light)
-            bug fixed in templating
+* 0.1.11    improved error handling (light), bug fixed in templating
 * 0.1.12    putting errors in the stack. Having fun adding function to remember how it works.
+* 0.1.13    now put confined error in stack.
+* 0.1.14    proud enough of confineds the console to interact with stack
 
 Roadmap before 1.0.0
 ********************

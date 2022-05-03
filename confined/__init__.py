@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 from __future__ import absolute_import
-
+from typing import Final
 import re
 from decimal import Decimal as NUM, getcontext, setcontext, Inexact, Rounded, Context
 from json import dumps
@@ -10,6 +10,9 @@ from sys import stderr
 from functools import wraps
 
 from .check_arg import valid_and_doc, default_doc_maker
+
+class TerminalException(Exception):
+    pass
 
 def must_be_in(whitelist, whitelist_type="operators"):
     def must_be_in(a):
@@ -24,7 +27,7 @@ def positional_can_be(*wanted_type):
         message = []
         for pos, argu in enumerate(argl):
             if not any(map(lambda pt: isinstance(argu, pt),wanted_ptype[pos] )):
-                raise Exception("TypeCheck::%r is not of type %r" % (argu._out,wanted_ptype[pos]))
+                raise Exception("TypeCheck::%r (pos %d) is not of type %r" % (argu._out,pos,wanted_ptype[pos]))
     return positional_can_be
 
 
@@ -35,11 +38,11 @@ def last_types_in_stack_must_be(*wanted_type):
         for i, _type in enumerate(reversed(wanted_type)):
             i += 1
             if stack[-i].type != _type:
-                message += ["(%r) %s is not of type %s" % (stack[-i], stack[-i].type,_type) ]
+                message += ["(%r) (new pos %d) %s is not of type %s" % (stack[-i],i, stack[-i].type,_type) ]
                 to_highlight += [ len(stack) -  i,]
         if message:
             conf_error(stack, "TypeCheck", message, highlight=to_highlight)
-        if message: raise Exception("CONFINED ERROR:%s" % "".join(message))
+        if message: raise Exception("CONFINED ERROR :Checking Types")
     return last_types_in_stack_must_be
 
 def min_stack_size(size):
@@ -75,6 +78,10 @@ class Value(object):
     def __init__(self, val, tag=''):
         self.tag, self.val= tag, val
 
+    def copy(self):
+        val = self.val
+        return Value(N(val) if self.type == "num" else val ,self.tag)
+
     @property
     def type(self):
         return isinstance(self.val, NUM) and "num" or "str"
@@ -108,7 +115,9 @@ class Value(object):
         return "".join([quote, self._out,quote, ":%(tag)s" % (self.__dict__)])
 
 N,V = NUM, Value
-true, false = V(N(1),"true"), V(N(0), "false")
+#true, false = V(N(1),"true"), V(N(0), "false")
+true : Final= V(N(1),"true")
+false:Final = V(N(0), "false")
 
 def display(stack, highlight=set({})):
     """TODO : use the context with log to compute the %xd"""
@@ -123,6 +132,7 @@ def display(stack, highlight=set({})):
 
 def conf_error(stack,error_type, error_msgs, highlight=set({})):
     
+    print(error_type)
     display(stack, highlight=highlight)
     stack += [ V("\nType: >%s< \n====================\n%s\n===================\n" % (error_type, "".join(error_msgs)), "ERROR") ]
 
@@ -319,7 +329,7 @@ def dup(stack):
     """
     .... a DUP => ... a a
     """
-    stack += [ stack[-1] ]
+    stack += [ stack[-1].copy() ]
 
 def leng(stack):
     """return the size of the stack
@@ -348,11 +358,12 @@ def edict(stack):
 two_num = check_type("num", "num")
 one_num = check_type("num")
 
-def apply_(f, consume=2, chek_input=two_num, check_output=last_types_in_stack_must_be("num")):
+def apply_(f, consume=2, chek_input=two_num, check_output=last_types_in_stack_must_be("num"),**kw):
     """Convenience function to apply f(S[-1], [-2], ...) and push it on stack
     """
     def do(stack):
-        tag=stack[-1].tag
+       
+        tag=stack[-1].tag if kw.get("keep_tag", False) else ''
         stack += [V(N(f(*reversed(pop_val(consume)(stack)))),tag)]
         check_output(stack)
 
@@ -363,12 +374,26 @@ def apply_(f, consume=2, chek_input=two_num, check_output=last_types_in_stack_mu
 def not_(stack):
     """Logical Not"""
     l = stack[-1]
-    l.val = N(not(l.val))
+    #if l.tag:
+    #    l.val = (N(1),N(0))[bool(l.val)]
+    #else:
+    stack[-1] = (true, false)[l.val>0]
+
 
 @min_stack(1)
 def val_type(stack):
     v, = pop(1)(stack)
-    stack += [ V(v.type, "type") ]
+    try:
+        stack += [ V(v.type, "type") ]
+    except Exception as e:
+        stack += [ V("external") ]
+@min_stack(1)
+@check_type("num")
+def ndup(stack):
+    v, = pop(1)(stack)
+    min_stack_size(v.int)(stack)
+    for i in range(len(stack) - v.int,len(stack)):
+        stack += [ stack[i].copy(), ]
 
 @min_stack(2)
 @check_type("str", "str")
@@ -383,32 +408,54 @@ def string_equal(stack):
     val1, val2 = pop_val(2)(stack)
     stack += [ true if val1==val2 else false ]
 
+
+@min_stack(2)
+@check_type("num", "num")
+def cmp_(stack):
+    val1, val2 = pop_val(2)(stack)
+    stack += [ true if (bool(val1) or bool(val2)) else false ]
+
+@min_stack(2)
+@check_type()
+def or_(stack):
+    val1, val2 = pop_val(2)(stack)
+    stack += [ true if (bool(val1) or bool(val2)) else false ]
+
+@min_stack(2)
+@check_type()
+def and_(stack):
+    val1, val2 = pop_val(2)(stack)
+    stack += [ true if (bool(val1) and bool(val2)) else false ]
+
 ops = { name : num_op(name) for name in dispatch_op }
 ops.update({
        ">NUM" : to_num,
        ">STR" : to_str,
        "CAT" : cat,
 
-       "ADD" : apply_(lambda x,y: N(x + y)),
-       "SUB" : apply_(lambda x,y: N(x - y)),
-       "MUL" : apply_(lambda x,y: N(x * y)),
-       "DIV" : apply_(lambda x,y: N(x / y)),
+       "ADD" : apply_(lambda x,y: N(x + y), keep_tag=True),
+       "SUB" : apply_(lambda x,y: N(x - y), keep_tag=True),
+       "MUL" : apply_(lambda x,y: N(x * y), keep_tag=True),
+       "DIV" : apply_(lambda x,y: N(x / y), keep_tag=True),
        "TRUEDIV" : apply_(lambda x,y: N(x // y)),
-       "XOR" : apply_(lambda x,y: N(int(x) ^ int(y))),
-       "OR" : apply_(lambda x,y: N(int(x) | int(y))),
-       "AND" : apply_(lambda x,y: N(int(x) & int(y))),
+       "BXOR" : apply_(lambda x,y: N(int(x) ^ int(y))),
+       "BOR" : apply_(lambda x,y: N(int(x) | int(y))),
+       "BAND" : apply_(lambda x,y: N(int(x) & int(y))),
        "MOD" : apply_(lambda x,y: N(int(x) % int(y))),
-       "CMP" : apply_(lambda x,y: N(x.compare(y))),
-       "SEQ" : string_equal,
+       "CMP" : apply_(lambda x,y: N(x.compare(y)), keep_tag=False),
+       "STREQ" : string_equal,
        "TYP" : val_type,
        "IN" : in_,
        "NOT" : not_,
+       "OR" : or_,
+       "AND" : and_,
        "TAG" : tag,
        "IFT" : ift,
        "MATCH" : match,
        "MTAG" : match_tag,
        "ROT" : rotn,
        "DUP" : dup,
+       "NDUP" : ndup,
        "TOP" : top,
        "DROP" : drop,
        "SWAP" : swap,
@@ -470,12 +517,14 @@ def tokenize(ops,str):
         VAR = r"""(?P<VAR>\$\S+)""",
     )
     regexp = re.compile(r"""%(ALL)s""" % atom % atom % base_type  ,
-        re.MULTILINE|re.VERBOSE|re.I)
+        re.MULTILINE|re.VERBOSE)
     return regexp.finditer(str)
 
 _SENTINEL = object()
-
-def parse(ctx, string, data=_SENTINEL, dbg=False):
+MAX_STACK=64
+def parse(ctx, string, data=_SENTINEL, dbg=False, context=_SENTINEL):
+    if context is _SENTINEL:
+        context = dict(_max_stack=MAX_STACK, control=False)
     if data is _SENTINEL:
         # fix weired bug in ipython where stack is not destroyed
         data = []
@@ -488,18 +537,25 @@ def parse(ctx, string, data=_SENTINEL, dbg=False):
     #dbg and data and display(data)
     last_unrecognized=""
     toprint=""
+    terminate = context.get("control",False) is False and len(data) > context.get("_max_stack", MAX_STACK)
+    
+    if terminate: return data[-1]
     try:
+        seen=False
         for i,match_kwd in enumerate(tokenize(ops, string)):
+            seen=True
             kwd=match_kwd
-            last_unrecognized = string[last_match:kwd.start()].strip()
-            last_token = kwd.end()
-            if last_unrecognized.strip():
+            last_unrecognized = string[last_match:match_kwd.start()].strip()
+            last_token = match_kwd.end()
+            if last_unrecognized:
                 # BUG DOES NOT SEE LAST SYNTAX ERROR IN FILE (ignored)
-                toprint=string[0:last_match] + " >%s< " % last_unrecognized + \
-                    string[kwd.pos:]
-                data+=[V("\nUNRECOGNIZED TOKEN >%s< \n====================\n%s\n===================\n" % (last_unrecognized, toprint), "ERROR")]
+                toprint="*%s* in \n" % last_unrecognized + \
+                    string[match_kwd.pos:]
+                conf_error(data, "UnrecognizedToken", toprint)
                 print("\n")
-                break
+            cur_pos, current_match = current_match, match_kwd.start()
+            old,last_match = last_match, match_kwd.end()
+
             kwd = kwd.groupdict()
             if kwd["OP"]:
                 try:
@@ -525,26 +581,28 @@ def parse(ctx, string, data=_SENTINEL, dbg=False):
                 # dont use "safe_substitute" it is unsafe
                 data+= [ V(Template(kwd["VAR"],).substitute(ctx), kwd["VAR"][1:]) ]
             dbg and display(data)
-            kwd=match_kwd
-            if last_unrecognized.strip():
-                # BUG DOES NOT SEE LAST SYNTAX ERROR IN FILE (ignored)
-                toprint=string[0:last_match] + " >%s< " % last_unrecognized + \
-                    string[kwd.pos:]
-                data+=[V("\nUNRECOGNIZED TOKEN >%s< \n====================\n%s\n===================\n" % (last_unrecognized, toprint), "ERROR")]
-                print('\n')
-                print('\n')
-                break
-                #raise Exception("Un parsed expression **%s** in %s" %
-                #    (last_unrecognized, toprint))
-            cur_pos, current_match = current_match, kwd.start()
-            old,last_match = last_match, kwd.end()
-        if last_unrecognized.strip():# and not parse_base["VOID"](last_unrecognized):
-            toprint=string[0:last_match] + " >%s< " % last_unrecognized + \
-                string[kwd.end():]
-            data+=[V("\nUNRECOGNIZED TOKEN >%s< \n====================\n%s\n===================\n" % (last_unrecognized, toprint), "ERROR")]
+            if not context.get("control",False):
+                stack_overflow = parse(
+                    context,
+                    """LEN $_max_stack >NUM 1: SUB CMP NOT NOT """,
+                    data=data.copy(),
+                    context=dict(control=True)
+                )
+                if(stack_overflow is true):
+                    if(not data[-1].tag.strip().startswith("Type: >Ressource<")):
+                        conf_error(data, "Ressource", "limit of stack used")
+                    raise(TerminalException("RessourceError: Max stack achieved"))
+        if seen is False and string.strip():
+            conf_error(data, "UnrecognizedTokenB", string)
+        elif last_match+1 < len(string):
+            conf_error(data, "UnrecognizedTokenE", string[last_match:])
+            
         if not res:
-            res = data[-1] if len(data) else ""
+            res = data[-1] if len(data) else "empty"
         return res
+    except TerminalException as te:
+       terminate = True
+       return data[-1]
 
     except Exception as e:
         import sys, traceback
@@ -555,8 +613,10 @@ def parse(ctx, string, data=_SENTINEL, dbg=False):
         toprint= "**".join([before, current, after])
         toprint+= "".join(traceback.format_tb(exc_traceback))
         toprint+= "<%s> triggered EXCP %s" % (current.strip(), e)
-        data += [ toprint ]
-        print(toprint)
+
+        conf_error(data,"Parsing", toprint )
+        return data[-1]
+
         
     finally:
         del(data)
@@ -570,16 +630,34 @@ def console():
 #    parse({},s,data=stack, dbg=True)
 
     from prompt_toolkit import prompt
+    from prompt_toolkit.shortcuts import clear
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.completion import WordCompleter
-
+    s=" "
     while 1:
+        clear()
+        if len(s.strip()) and s.strip().lower() in { "cls" }:
+            continue
+        if len(s.strip()) and s.strip().lower() in { "quit", "bye", "exit","q", "\q" }:
+            break
+        res=parse({},s,data=stack, dbg=True)
+        if isinstance(res, Value) and not res.tag=="ERROR":
+            print("r>" + str(res))
+        if isinstance(res, Value) and res.tag=="ERROR" and "Type: >Ressource<" in res.val:
+            break
+        if stack:
+            check_last=[ stack[-1], ]
+            r=parse({},"""
+                DUP 
+                TYP "num": STREQ
+                SWAP
+                TYP "str": STREQ
+                OR""",data=check_last, context=dict(control=True))
+            if r is false:
+                print(dumps(stack.pop(), indent=4))
+
         s = prompt(u'CONF# ',
                             history=FileHistory('confined.txt'),
                             completer=WordCompleter(ops.keys()),
                             complete_while_typing=True,
                             )
-        if len(s.strip()) and s.strip().lower() in { "quit", "bye", "exit","q", "\q" }:
-            break
-        parse({},s,data=stack, dbg=True)
-

@@ -5,13 +5,13 @@ from __future__ import absolute_import
 import re
 from decimal import Decimal as NUM, getcontext, setcontext, Inexact, Rounded, Context
 from json import dumps
-from operator import mul, truediv as div, sub, add
 from string import Template
+from sys import stderr
 from functools import wraps
 
 from .check_arg import valid_and_doc, default_doc_maker
 
-def must_be_in(whitelist):
+def must_be_in(whitelist, whitelist_type="operators"):
     def must_be_in(a):
         if a not in whitelist:
             raise Exception("%r not in whitelist %r" % (a, whitelist))
@@ -20,30 +20,36 @@ def must_be_in(whitelist):
 def positional_can_be(*wanted_type):
     def positional_can_be(*arg):
         wanted_ptype= list(wanted_type)
-        argl = list(arg)[1:]
+        argl = arg[1:]
+        message = []
         for pos, argu in enumerate(argl):
             if not any(map(lambda pt: isinstance(argu, pt),wanted_ptype[pos] )):
-                display(*arg)
-                raise Exception("%r is not of type %r" % (
-                    argu, wanted_ptype[pos]
-                ))
+                raise Exception("TypeCheck::%r is not of type %r" % (argu._out,wanted_ptype[pos]))
     return positional_can_be
 
 
 def last_types_in_stack_must_be(*wanted_type):
-    def last_types_in_stack_must_be(*arg):
-        a = list(arg[-1])
-        for i, type in enumerate(reversed(wanted_type)):
+    def last_types_in_stack_must_be(stack):
+        message = []
+        to_highlight= []
+        for i, _type in enumerate(reversed(wanted_type)):
             i += 1
-            if a[-i].type != type:
-                display(*arg)
-                raise Exception("CONFINED ERROR:%s is not of type %s" % (a[-i], type))
+            if stack[-i].type != _type:
+                message += ["(%r) %s is not of type %s" % (stack[-i], stack[-i].type,_type) ]
+                to_highlight += [ len(stack) -  i,]
+        if message:
+            conf_error(stack, "TypeCheck", message, highlight=to_highlight)
+        if message: raise Exception("CONFINED ERROR:%s" % "".join(message))
     return last_types_in_stack_must_be
 
 def min_stack_size(size):
     def min_stack_size(stack):
         if len(stack)<size:
-            display(stack)
+            conf_error(
+                stack, 
+                "StackUnderflow",
+                "For this operation stack expected to be (%d) and is %d" % (size,len(stack))
+            )
             raise Exception("CONFINED ERROR:Stack is too small %d argument required, stack has %d element" % (size,len(stack)))
     return min_stack_size
 
@@ -60,27 +66,6 @@ def must_return_value(f):
         return res
     return check_f
 
-dispatch_op = dict(
-    MUL = mul, DIV=div, ADD=add, SUB=sub,
-)
-
-def pop(n):
-    @min_stack(n)
-    def fr(stack):
-        return [ stack.pop() for i in range(n) ]
-    return fr
-
-def pop_val(n):
-    def fr(stack):
-        return [ stack.pop().val for i in range(n) ]
-    return min_stack(n)(fr)
-
-def is_int(decimal):
-    try:
-        decimal.to_integral_exact(Context(traps=[Inexact, Rounded]))
-        return True
-    except:
-        return False
 
 class Value(object):
     prec = 2
@@ -110,7 +95,8 @@ class Value(object):
         return dict(
             str = str,
             num = lambda v: str(int(self.val) if is_int(self.val) else
-                float(v.quantize(NUM(10) ** -Value.prec))),
+                #float(v.quantize(NUM(10) ** -Value.prec))),
+                float(v)),
         )[self.type](self.val)
 
     @property
@@ -119,10 +105,49 @@ class Value(object):
 
     def __repr__(self):
         quote = self.type == "str" and '"' or ""
-        return "".join([quote, self._out[:10] +
-( len(self._out)>10 and "..." or ""),quote, ":%(tag)s" % (self.__dict__)])
+        return "".join([quote, self._out,quote, ":%(tag)s" % (self.__dict__)])
 
 N,V = NUM, Value
+true, false = V(N(1),"true"), V(N(0), "false")
+
+def display(stack, highlight=set({})):
+    """TODO : use the context with log to compute the %xd"""
+    print ("******************************************")
+    for i, v in enumerate(stack):
+        high = str(v)
+        if i in set(highlight): high = ">%s<" % high
+        rel = len(stack)
+        print( "| %3d | %s " % (rel - i -1, high))
+    print ("******************************************")
+
+
+def conf_error(stack,error_type, error_msgs, highlight=set({})):
+    
+    display(stack, highlight=highlight)
+    stack += [ V("\nType: >%s< \n====================\n%s\n===================\n" % (error_type, "".join(error_msgs)), "ERROR") ]
+
+dispatch_op = dict(
+)
+
+def pop(n):
+    @min_stack(n)
+    def fr(stack):
+        return [ stack.pop() for i in range(n) ]
+    return fr
+
+def pop_val(n):
+    @min_stack(n)
+    def fr(stack):
+        return [ stack.pop().val for i in range(n) ]
+    return min_stack(n)(fr)
+
+def is_int(decimal):
+    try:
+        decimal.to_integral_exact(Context(traps=[Inexact, Rounded]))
+        return True
+    except:
+        return False
+
 
 @min_stack(1)
 @check_type("str")
@@ -138,7 +163,7 @@ def to_str(stack):
     n = stack.pop()
     stack += [ V(n.str,n.tag)]
 
-true, false = Value(N(1), "_true"), Value(N(0), "_false")
+#true, false = Value(N(1), "_true"), Value(N(0), "_false")
 
 def to_dict(stack):
     """convert a stack to a dict"""
@@ -156,7 +181,28 @@ def ift(stack):
     true, false, val = reversed(pop(3)(stack))
     stack += [ true if bool(val.val) else false ]
 
-@min_stack(2)
+@check_type("num")
+def match_tag(stack):
+    """tells how much time an the reference has match any of the n value above
+    consumes all the elements, leaves the number of match on the stack
+
+     ... matchable
+     ... matchable
+     2: matchable
+     1: reference
+     0: iter
+     --------------
+    => 0: V(N(matches), "_matches")
+    """
+    iter, ref = pop(2)(stack)
+    iter = iter.int
+    matches = 0
+    to_compare = pop(iter)(stack)
+    for to_comp in to_compare:
+        if to_comp.tag == ref.tag:
+            matches += 1
+    stack += [ Value(N(matches), "_tag_matches") ]
+
 @check_type("num")
 def match(stack):
     """tells how much time an the reference has match any of the n value above
@@ -180,7 +226,7 @@ def match(stack):
         if to_comp.val == ref.val:
             matches += 1
     stack += [ Value(N(matches), "_matches") ]
-
+@min_stack(3)
 @check_type("str", "num", "num")
 def splice(stack):
     """
@@ -197,9 +243,11 @@ def num_op(op):
     return do_op
 
 
+@min_stack(2)
 @check_type("str", "str")
 def cat(stack):
-    stack+= [ Value("".join(reversed(pop_val(2)(stack)))) ]
+    v1, v2 =pop(2)(stack)
+    stack+= [ Value(v2.val+v1.val,v1.tag) ]
 
 @min_stack(2)
 @check_type("str")
@@ -213,19 +261,12 @@ def tag(stack):
     val.tag = tag.val
     stack += [ val ]
 
-def display(stack):
-    """TODO : use the context with log to compute the %xd"""
-    print ("******************************************")
-    for i, v in enumerate(stack):
-        rel = len(stack)
-        print( "| %3d | %r" % (rel - i -1, v))
-    print ("******************************************")
-
+@min_stack(1)
 def top(stack):
     """use the top of the stack as a stack where to put/fetch stuff"""
     stack.insert(0,stack.pop())
 
-
+@min_stack(1)
 @check_type("str")
 def get(stack):
     """find element matching tag of the last value on the stack
@@ -242,6 +283,7 @@ def get(stack):
         stack += [ V(N((abs(pos)-1)), "_findex") ]
         rotn(stack)
 
+@min_stack(2)
 @check_type("num")
 def rotn(stack):
     """
@@ -257,10 +299,12 @@ def rotn(stack):
 def nop(stack):
     pass
 
+@min_stack(2)
 def swap(stack):
     """ a b => b a """
     stack[-1], stack[-2] = stack[-2], stack[-1]
 
+@min_stack(2)
 def over(stack):
     """ a b OVER => a b a """
     stack += [ stack[-2], ]
@@ -282,6 +326,7 @@ def leng(stack):
     """
     stack += [ V(N(len(stack)),"_length") ]
 
+@min_stack(1)
 @check_type("str")
 def eval(stack):
     """Eval a string on the stack that is a serie of comma separated operators
@@ -307,37 +352,61 @@ def apply_(f, consume=2, chek_input=two_num, check_output=last_types_in_stack_mu
     """Convenience function to apply f(S[-1], [-2], ...) and push it on stack
     """
     def do(stack):
-        stack += [V(N(f(*reversed(pop_val(consume)(stack)))))]
+        tag=stack[-1].tag
+        stack += [V(N(f(*reversed(pop_val(consume)(stack)))),tag)]
         check_output(stack)
 
-    return two_num(do)
+    return chek_input(do)
 
+@min_stack(1)
 @check_type("num")
 def not_(stack):
     """Logical Not"""
     l = stack[-1]
     l.val = N(not(l.val))
 
-@check_type("str")
+@min_stack(1)
+def val_type(stack):
+    v, = pop(1)(stack)
+    stack += [ V(v.type, "type") ]
+
+@min_stack(2)
+@check_type("str", "str")
 def in_(stack):
     """Find a needle in a haystack"""
     needle, haystack = pop_val(2)(stack)
     stack += [ true if int(needle in haystack) else false ]
+
+@min_stack(2)
+@check_type("str", "str")
+def string_equal(stack):
+    val1, val2 = pop_val(2)(stack)
+    stack += [ true if val1==val2 else false ]
 
 ops = { name : num_op(name) for name in dispatch_op }
 ops.update({
        ">NUM" : to_num,
        ">STR" : to_str,
        "CAT" : cat,
+
+       "ADD" : apply_(lambda x,y: N(x + y)),
+       "SUB" : apply_(lambda x,y: N(x - y)),
+       "MUL" : apply_(lambda x,y: N(x * y)),
+       "DIV" : apply_(lambda x,y: N(x / y)),
+       "TRUEDIV" : apply_(lambda x,y: N(x // y)),
        "XOR" : apply_(lambda x,y: N(int(x) ^ int(y))),
        "OR" : apply_(lambda x,y: N(int(x) | int(y))),
        "AND" : apply_(lambda x,y: N(int(x) & int(y))),
-       "CMP" : apply_(lambda x,y: cmp(x, y)),
+       "MOD" : apply_(lambda x,y: N(int(x) % int(y))),
+       "CMP" : apply_(lambda x,y: N(x.compare(y))),
+       "SEQ" : string_equal,
+       "TYP" : val_type,
        "IN" : in_,
        "NOT" : not_,
        "TAG" : tag,
        "IFT" : ift,
        "MATCH" : match,
+       "MTAG" : match_tag,
        "ROT" : rotn,
        "DUP" : dup,
        "TOP" : top,
@@ -431,24 +500,23 @@ def parse(ctx, string, data=_SENTINEL, dbg=False):
                 data+=[V("\nUNRECOGNIZED TOKEN >%s< \n====================\n%s\n===================\n" % (last_unrecognized, toprint), "ERROR")]
                 print("\n")
                 break
-                #raise Exception("Un parsed expression **%s** in %s" %
-                #    (last_unrecognized, toprint))
             kwd = kwd.groupdict()
             if kwd["OP"]:
-                # balck magic
-                #dbg and print( "BEFORE APPLYING %d, %s" %(i, kwd["OP"]) )
-                #dbg and display(data)
-                ops[kwd["OP"]](data)
-                #dbg and print( "AFTER %(OP)s" % kwd )
+                try:
+                    ops[kwd["OP"]](data)
+                except Exception as e:
+                    print(e, file=stderr)
             if len(data)>2 and "<<TERM>>" == data[-1]:
                 # TERM of the code is either end of string
                 # or an OP dumping <<TERM>> and a res in stack
                 data.pop()
                 return data[-1]
             if kwd["NUM"]:
-                # no : in num regexp, so I can do it
                 val, tag = kwd["NUM"].split(":")
-                data+= [ V(N(val), tag.strip()) ]
+                try:
+                    data+= [ V(N(val), tag.strip()) ]
+                except decimal.InvalidOperation:
+                    data+=[V("\nInvalidDecimal >%s< \n====================\n%s\n===================\n" % (val), "RepresentationError")]
             if kwd["STR"]:
                 #tag dont match string so I can do it
                 tag = kwd["STR"].split(":")[-1]
@@ -495,6 +563,7 @@ def parse(ctx, string, data=_SENTINEL, dbg=False):
 
 def console():
     stack = []
+# minimal version
 #while(s:= input('CONF> ')):
 #    if s.strip().lower() in { "quit", "bye", "exit","q", "\q" }:
 #        break
@@ -504,15 +573,13 @@ def console():
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.completion import WordCompleter
 
-    while s := prompt(u'CONF# ',
+    while 1:
+        s = prompt(u'CONF# ',
                             history=FileHistory('confined.txt'),
-                            completer=WordCompleter(
-                            ['MUL', 'DIV', 'ADD', 'SUB', '>NUM', '>STR', 'CAT', 'XOR', 'OR', 'AND', 'CMP',
-                             'IN', 'NOT', 'TAG', 'IFT', 'MATCH', 'ROT', 'DUP', 'TOP', 'DROP', 'SWAP',
-                             'OVER', 'NOP', 'GET', 'LEN', 'EJOIN', 'EDICT', 'EVAL', '<<TERM>>']),
+                            completer=WordCompleter(ops.keys()),
                             complete_while_typing=True,
-                            ):
-        if s.strip().lower() in { "quit", "bye", "exit","q", "\q" }:
+                            )
+        if len(s.strip()) and s.strip().lower() in { "quit", "bye", "exit","q", "\q" }:
             break
         parse({},s,data=stack, dbg=True)
 

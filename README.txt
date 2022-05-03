@@ -100,6 +100,7 @@ Changelog
 * 0.1.10    python3 (overdue)
 * 0.1.11    improved error handling (light)
             bug fixed in templating
+* 0.1.12    putting errors in the stack. Having fun adding function to remember how it works.
 
 Roadmap before 1.0.0
 ********************

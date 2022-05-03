@@ -115,9 +115,9 @@ class Value(object):
         return "".join([quote, self._out,quote, ":%(tag)s" % (self.__dict__)])
 
 N,V = NUM, Value
-#true, false = V(N(1),"true"), V(N(0), "false")
-true : Final= V(N(1),"true")
-false:Final = V(N(0), "false")
+
+true : Final = V(N(1),"true")
+false: Final = V(N(0), "false")
 
 def display(stack, highlight=set({})):
     """TODO : use the context with log to compute the %xd"""
@@ -622,6 +622,78 @@ def parse(ctx, string, data=_SENTINEL, dbg=False, context=_SENTINEL):
         del(data)
 
 def console():
+    import argparse
+    from sys import stdin
+    from json import loads
+    parser = argparse.ArgumentParser(
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    description='''
+Console to play with confined
+=============================
+
+cf https://github.com/jul/confined
+
+At the end save the session in text that were used to build the current state.
+A context for templating can be imported.
+
+By default you have a session where you can input directly code
+
+
+Example
+------
+
+confineds -j '{"name" : "jul", "f" : 1}' -f filename
+
+usage example is reloading last session code and seeing stack state
+
+
+confineds -j '{ "name":"jul", "tva":19.56}' session.2022-05-03-19:01:05.confined
+
+by pressing "q" you leave de confined shell
+
+ 
+$name "ien": CAT
+$tva >NUM 100: DIV 40: MUL 
+$tva >NUM 100: DIV
+"tva": TAG
+DUP
+20:prix
+MUL
+
+
+******************************************
+|   3 | "julien": 
+|   2 | 7.824: 
+|   1 | 0.1956:tva 
+|   0 | 3.912:prix 
+******************************************
+saved code in session.2022-05-03-19:05:05.confined
+
+
+
+
+''')
+    parser.add_argument('-json', default='{}',help="json with a dict for the template")
+    parser.add_argument('file', nargs='?', help='optional file to interpret else use stdin')
+    res=parser.parse_args()
+
+    def usage(status=0):
+        parser.print_help()
+        exit(status)
+    ctx=loads(res.json)
+    s=""
+    loaded=''
+    try:
+        if res.file:
+            s=loaded= (open(res.file) if res.file != "-" else stdin).read()
+    except Exception as e:
+        print("check arguments")
+        print(res)
+        print(e)
+        usage(1)
+
+
+
     stack = []
 # minimal version
 #while(s:= input('CONF> ')):
@@ -633,14 +705,30 @@ def console():
     from prompt_toolkit.shortcuts import clear
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.completion import WordCompleter
-    s=" "
+    from datetime import datetime as dt
+    valid_code=''
+    res=''
     while 1:
         clear()
-        if len(s.strip()) and s.strip().lower() in { "cls" }:
-            continue
-        if len(s.strip()) and s.strip().lower() in { "quit", "bye", "exit","q", "\q" }:
+        if not valid_code and ctx:
+            print("contexte loaded")
+            print(dumps(ctx, indent=4))
+        ciao = { "q", "quit", ":wq", "exit", "bye" }
+        if len(s.strip()) and s.strip().lower() in ciao :
+            print("**************** CODE *********************")
+            print(valid_code)
+            print("\n**************** STACK ********************\n")
+            display(stack)
+            if valid_code.strip() != loaded.strip():
+                now = dt.now().strftime("%Y-%m-%d-%H:%M:%m")
+                valid_code+="\n\n"
+                fn= "session.%s.confined" % now
+                with open(fn,"wt") as f:
+                    f.write(valid_code)
+                print("saved code in %s" % fn)
             break
-        res=parse({},s,data=stack, dbg=True)
+        complete= list(ops.keys()) + list(ciao)
+        res=parse(ctx,s,data=stack, dbg=True)
         if isinstance(res, Value) and not res.tag=="ERROR":
             print("r>" + str(res))
         if isinstance(res, Value) and res.tag=="ERROR" and "Type: >Ressource<" in res.val:
@@ -656,8 +744,10 @@ def console():
             if r is false:
                 print(dumps(stack.pop(), indent=4))
 
-        s = prompt(u'CONF# ',
-                            history=FileHistory('confined.txt'),
-                            completer=WordCompleter(ops.keys()),
-                            complete_while_typing=True,
-                            )
+        valid_code+="\n" + s
+        s = prompt(
+            u'CONF# ',
+            history=FileHistory('confined.txt'),
+            completer=WordCompleter(complete),
+            complete_while_typing=True,
+        )

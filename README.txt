@@ -21,14 +21,58 @@ so that remote it is safe to pass it
 Usage
 =====
 
-can be used like python -mconfined
+Language
+********
+
+
+Sandbox for the language with console exists as a standalone script.
+At the end of the session your code can be replayed like this:
+
+like::
+
+    (p3) jul@plumeau:~/src/confined$ confineds -j '{ "name":"jul", "tva":19.56}' session.2022-05-03-19:01:05.confined
+
+results::
+
+    **************** CODE *********************
+
+
+    $name "ien": CAT
+    $tva >NUM 100: DIV 40: MUL 
+    $tva >NUM 100: DIV
+    "tva": TAG
+    DUP
+    20:prix
+    MUL
+
+
+    **************** STACK ********************
+
+    ******************************************
+    |   3 | "julien": 
+    |   2 | 7.824: 
+    |   1 | 0.1956:tva 
+    |   0 | 3.912:prix 
+    ******************************************
+
+
+
+Templating
+**********
+
+Standalone
+----------
+
+Templating usage be used like python -mconfined
 
 For usage::
 
     python confined -mconfined -h
 
-The environment can be experimented with **confineds** (a confined shell provided
-with the module) (requires prompt_toolkit)
+
+
+As code
+-------
 
 Can also be used programmatically
 
@@ -92,16 +136,17 @@ Gives::
 Changelog
 =========
 
-* 0.1.0     initial release oops forgot __name__ == main
-* 0.1.1     initial release
-* 0.1.2     going to fast, mis clicked a button in pypi
-* 0.1.4     forgot howto declare requirements
-* 0.1.9     after too many failure, embedding check_arg in this
-* 0.1.10    python3 (overdue)
-* 0.1.11    improved error handling (light), bug fixed in templating
-* 0.1.12    putting errors in the stack. Having fun adding function to remember how it works.
-* 0.1.13    now put confined error in stack.
+* 0.1.15    confineds now save and restore your code at the end of session
 * 0.1.14    proud enough of confineds the console to interact with stack
+* 0.1.13    now put confined error in stack.
+* 0.1.12    putting errors in the stack. Having fun adding function to remember how it works.
+* 0.1.11    improved error handling (light), bug fixed in templating
+* 0.1.10    python3 (overdue)
+* 0.1.9     after too many failure, embedding check_arg in this
+* 0.1.4     forgot howto declare requirements
+* 0.1.2     going to fast, mis clicked a button in pypi
+* 0.1.1     initial release
+* 0.1.0     initial release oops forgot __name__ == main
 
 Roadmap before 1.0.0
 ********************

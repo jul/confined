@@ -23,7 +23,7 @@ if "install" in sys.argv or "setup" in sys.argv or "sdist" in sys.argv:
 
 setup(
         name='confined',
-        version='0.1.15',
+        version='0.1.16',
         author='Julien Tayon',
         author_email='julien@tayon.net',
         packages=['confined'],
@@ -35,7 +35,7 @@ setup(
         #'console_scripts': ['console=confined.console:main'],
         'console_scripts': ['confineds=confined:console'],
         },
-        requires=[   ],
+        install_requires=['prompt_toolkit',   ],
         classifiers=[
           'Development Status :: 4 - Beta',
           'Intended Audience :: Developers',

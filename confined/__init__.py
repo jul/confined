@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 from __future__ import absolute_import
-from typing import Final
 import re
 from decimal import Decimal as NUM, getcontext, setcontext, Inexact, Rounded, Context
 from json import dumps
@@ -116,8 +115,8 @@ class Value(object):
 
 N,V = NUM, Value
 
-true : Final = V(N(1),"true")
-false: Final = V(N(0), "false")
+true = V(N(1),"true")
+false = V(N(0), "false")
 
 def display(stack, highlight=set({})):
     """TODO : use the context with log to compute the %xd"""
@@ -474,7 +473,7 @@ base_type = dict(
     sqtring = r"""'[^'\\]*(?:\\[\S\s][^'\\]*)*'""",
     string = r'''(%(sqtring)s|%(dqstring)s)''',
     id = "([a-z]|_)?(?:[a-z0-9_]*)",
-    VOID = "^(\s+)$"
+    VOID = r"^(\s+|\n)?"
 )
 parse_base = { k:re.compile(v % base_type, re.I|re.M|re.VERBOSE).match for k,v in
 base_type.items() }
@@ -593,9 +592,9 @@ def parse(ctx, string, data=_SENTINEL, dbg=False, context=_SENTINEL):
                         conf_error(data, "Ressource", "limit of stack used")
                     raise(TerminalException("RessourceError: Max stack achieved"))
         if seen is False and string.strip():
-            conf_error(data, "UnrecognizedTokenB", string)
-        elif last_match+1 < len(string):
-            conf_error(data, "UnrecognizedTokenE", string[last_match:])
+            conf_error(data, "UnrecognizedToken", string)
+        elif last_match+1 < len(string) and string[last_match:].strip():
+            conf_error(data, "UnrecognizedToken", string[last_match:])
             
         if not res:
             res = data[-1] if len(data) else "empty"
@@ -720,7 +719,7 @@ saved code in session.2022-05-03-19:05:05.confined
             print("\n**************** STACK ********************\n")
             display(stack)
             if valid_code.strip() != loaded.strip():
-                now = dt.now().strftime("%Y-%m-%d-%H:%M:%m")
+                now = dt.now().strftime("%Y-%m-%d-%H_%M_%m")
                 valid_code+="\n\n"
                 fn= "session.%s.confined" % now
                 with open(fn,"wt") as f:
@@ -729,7 +728,7 @@ saved code in session.2022-05-03-19:05:05.confined
             break
         complete= list(ops.keys()) + list(ciao)
         res=parse(ctx,s,data=stack, dbg=True)
-        if isinstance(res, Value) and not res.tag=="ERROR":
+        if isinstance(res, Value):
             print("r>" + str(res))
         if isinstance(res, Value) and res.tag=="ERROR" and "Type: >Ressource<" in res.val:
             break

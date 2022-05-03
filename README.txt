@@ -136,6 +136,7 @@ Gives::
 Changelog
 =========
 
+* 0.1.16    requirements for prompt_toolkit added, fixed tokenization errors
 * 0.1.15    confineds now save and restore your code at the end of session
 * 0.1.14    proud enough of confineds the console to interact with stack
 * 0.1.13    now put confined error in stack.

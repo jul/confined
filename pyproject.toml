@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "confined"
+version = "0.1.17"
+dependencies = [ "prompt_toolkit" ]
+requires-python = ">=3.9"
+authors = [
+  {name = "Julien Tayon", email = "julien@tayon.net"},
+]
+maintainers = [
+  {name = "Julien Tayon", email = "julien@tayon.net"},
+]
+description = "A safe FORTH to exec confined command to untrusted users"
+readme = "README.rst"
+license = {file = "LICENSE.txt"}
+keywords = ["FORTH", "cli"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python"
+  'Intended Audience :: Developers',
+  'License :: OSI Approved :: BSD 2 Clause',
+  'Operating System :: OS Independent',
+  'Programming Language :: Python',
+]
+
+[project.urls]
+Homepage = "https://github.com/jul/confined"
+[tool.setuptools.packages.find]
+where = ["."]
+include=["scripts/*", "confined/*", "README.rst", "README.txt"]
+namespaces = false
+
+
+[tool.setuptools]
+script-files = ["scripts/confineds"]
+py-modules = [ "confined" ]
+provides = [ "confined"]

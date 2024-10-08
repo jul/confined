@@ -135,7 +135,8 @@ Gives::
 
 Changelog
 =========
-
+* 0.1.17    adding the freeze/thaw functions that can store part of stack in 
+            variables
 * 0.1.16    requirements for prompt_toolkit added, fixed tokenization errors
 * 0.1.15    confineds now save and restore your code at the end of session
 * 0.1.14    proud enough of confineds the console to interact with stack

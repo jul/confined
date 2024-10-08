@@ -7,6 +7,7 @@ from json import dumps
 from string import Template
 from sys import stderr
 from functools import wraps
+from prompt_toolkit.shortcuts import clear
 
 from .check_arg import valid_and_doc, default_doc_maker
 
@@ -120,6 +121,7 @@ false = V(N(0), "false")
 
 def display(stack, highlight=set({})):
     """TODO : use the context with log to compute the %xd"""
+    clear()
     print ("******************************************")
     for i, v in enumerate(stack):
         high = str(v)
@@ -133,7 +135,7 @@ def conf_error(stack,error_type, error_msgs, highlight=set({})):
     
     print(error_type)
     display(stack, highlight=highlight)
-    stack += [ V("\nType: >%s< \n====================\n%s\n===================\n" % (error_type, "".join(error_msgs)), "ERROR") ]
+    stack += [ V("\nType: >%s< \n====================\n%s\n====================\n" % (error_type, "".join(error_msgs)), "ERROR") ]
 
 dispatch_op = dict(
 )
@@ -389,6 +391,7 @@ def val_type(stack):
 @min_stack(1)
 @check_type("num")
 def ndup(stack):
+    """ ... nth elts n: DUP => ... nth elts nth elts """
     v, = pop(1)(stack)
     min_stack_size(v.int)(stack)
     for i in range(len(stack) - v.int,len(stack)):
@@ -400,6 +403,28 @@ def in_(stack):
     """Find a needle in a haystack"""
     needle, haystack = pop_val(2)(stack)
     stack += [ true if int(needle in haystack) else false ]
+
+stacks=dict()
+
+
+@min_stack(2)
+@check_type("num", "str")
+def freeze(stack):
+    """store the n last element of the stack in a variable
+    .... n: "name": FREEZE -> ... (n elements are stored in variable "name": """
+
+    global stacks
+    name, depth = pop_val(2)(stack)
+
+    stacks[name]=list(map(lambda e : e.copy(),stack[len(stack) - int(depth): len(stack)]))
+
+@min_stack(1)
+@check_type("str")
+def thaw(stack):
+    """restore stack stored in "name": into the stack"""
+    global stacks
+    name = pop_val(1)(stack)
+    stack+=stacks[name[0]]
 
 @min_stack(2)
 @check_type("str", "str")
@@ -448,6 +473,8 @@ ops.update({
        "NOT" : not_,
        "OR" : or_,
        "AND" : and_,
+       "FREEZE": freeze,
+       "THAW": thaw,
        "TAG" : tag,
        "IFT" : ift,
        "MATCH" : match,
@@ -580,6 +607,7 @@ def parse(ctx, string, data=_SENTINEL, dbg=False, context=_SENTINEL):
                 # dont use "safe_substitute" it is unsafe
                 data+= [ V(Template(kwd["VAR"],).substitute(ctx), kwd["VAR"][1:]) ]
             dbg and display(data)
+
             if not context.get("control",False):
                 stack_overflow = parse(
                     context,
@@ -595,7 +623,6 @@ def parse(ctx, string, data=_SENTINEL, dbg=False, context=_SENTINEL):
             conf_error(data, "UnrecognizedToken", string)
         elif last_match+1 < len(string) and string[last_match:].strip():
             conf_error(data, "UnrecognizedToken", string[last_match:])
-            
         if not res:
             res = data[-1] if len(data) else "empty"
         return res
@@ -701,7 +728,6 @@ saved code in session.2022-05-03-19:05:05.confined
 #    parse({},s,data=stack, dbg=True)
 
     from prompt_toolkit import prompt
-    from prompt_toolkit.shortcuts import clear
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.completion import WordCompleter
     from datetime import datetime as dt
@@ -718,6 +744,7 @@ saved code in session.2022-05-03-19:05:05.confined
             print(valid_code)
             print("\n**************** STACK ********************\n")
             display(stack)
+
             if valid_code.strip() != loaded.strip():
                 now = dt.now().strftime("%Y-%m-%d-%H_%M_%m")
                 valid_code+="\n\n"
@@ -728,8 +755,8 @@ saved code in session.2022-05-03-19:05:05.confined
             break
         complete= list(ops.keys()) + list(ciao)
         res=parse(ctx,s,data=stack, dbg=True)
-        if isinstance(res, Value):
-            print("r>" + str(res))
+        #if isinstance(res, Value):
+        #    print("r>" + str(res))
         if isinstance(res, Value) and res.tag=="ERROR" and "Type: >Ressource<" in res.val:
             break
         if stack:

@@ -21,7 +21,7 @@ Example
 
 INPUT *************************************************************
 
-cat <<'EOF' | python3 -i -mconfined  -j '{"name" : "jul", "f" : 1}' 
+cat <<'EOF' | python3 -i -mconfined  -j '{"name" : "jul", "f" : 1}'
 hello my name is <: $name "ie": "n": $f  DUP >NUM IFT  CAT CAT :>
 j+1 = <: $f >NUM 1: ADD :>
 what if I made a syntax error ? <: 1: 2:

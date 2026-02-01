@@ -50,7 +50,7 @@ def usage(status=0):
     exit(status)
 
 try:
-    to_read= open(res.file) if res.file else stdin
+    to_read = open(res.file) if res.file else stdin
     print(templatize(loads(res.json), to_read.read()))
 except Exception as e:
     print("check arguments")

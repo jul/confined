@@ -4,6 +4,8 @@
 #from setuptools import setup, find_packages
 from distutils.core import setup
 
+print( open("README.txt").read())
+
 import sys
 if "install" in sys.argv or "setup" in sys.argv or "sdist" in sys.argv:
     from confined import test_valid
@@ -23,7 +25,7 @@ if "install" in sys.argv or "setup" in sys.argv or "sdist" in sys.argv:
 
 setup(
         name='confined',
-        version='0.1.17',
+        version='0.2.0',
         author='Julien Tayon',
         author_email='julien@tayon.net',
         packages=['confined'],
@@ -47,4 +49,3 @@ setup(
           ],
 )
 
-print( open("README.txt").read())

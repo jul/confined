@@ -21,7 +21,7 @@ def must_be_in(whitelist, whitelist_type="operators"):
     return must_be_in
 
 def positional_can_be(*wanted_type):
-    def positional_can_be(*arg):
+    def positional_can_be(*arg, **kw):
         wanted_ptype= list(wanted_type)
         argl = arg[1:]
         message = []
@@ -32,7 +32,7 @@ def positional_can_be(*wanted_type):
 
 
 def last_types_in_stack_must_be(*wanted_type):
-    def last_types_in_stack_must_be(stack):
+    def last_types_in_stack_must_be(stack, **kw):
         message = []
         to_highlight= []
         for i, _type in enumerate(reversed(wanted_type)):
@@ -46,7 +46,7 @@ def last_types_in_stack_must_be(*wanted_type):
     return last_types_in_stack_must_be
 
 def min_stack_size(size):
-    def min_stack_size(stack):
+    def min_stack_size(stack, **kw):
         if len(stack)<size:
             conf_error(
                 stack, 
@@ -90,6 +90,11 @@ class Value(object):
     def int(self):
         assert self.type=="num"
         return int(self.val.to_integral_value())
+    
+    @property
+    def float(self):
+        assert self.type=="num"
+        return float(self.val)
 
     @property
     def is_int(self):
@@ -121,7 +126,6 @@ false = V(N(0), "false")
 
 def display(stack, highlight=set({})):
     """TODO : use the context with log to compute the %xd"""
-    clear()
     print ("******************************************")
     for i, v in enumerate(stack):
         high = str(v)
@@ -132,7 +136,6 @@ def display(stack, highlight=set({})):
 
 
 def conf_error(stack,error_type, error_msgs, highlight=set({})):
-    
     print(error_type)
     display(stack, highlight=highlight)
     stack += [ V("\nType: >%s< \n====================\n%s\n====================\n" % (error_type, "".join(error_msgs)), "ERROR") ]
@@ -140,7 +143,7 @@ def conf_error(stack,error_type, error_msgs, highlight=set({})):
 dispatch_op = dict(
 )
 
-def pop(n):
+def pop(n, **kw):
     @min_stack(n)
     def fr(stack):
         return [ stack.pop() for i in range(n) ]
@@ -159,30 +162,32 @@ def is_int(decimal):
     except:
         return False
 
+def cap(stack, **kw):
+    print(kw)
 
 @min_stack(1)
 @check_type("str")
-def to_num(stack):
+def to_num(stack, **kw):
     """Convert the last element of the stack from a string to a num"""
     value = stack[-1]
     value.val = N(value.val)
 
 @min_stack(1)
 @check_type("num")
-def to_str(stack):
+def to_str(stack, **kw):
     """Convert the last element of the stack from a a num to a string"""
     n = stack.pop()
     stack += [ V(n.str,n.tag)]
 
 #true, false = Value(N(1), "_true"), Value(N(0), "_false")
 
-def to_dict(stack):
+def to_dict(stack, **kw):
     """convert a stack to a dict"""
     return { v.tag: v._out for v in stack if v.tag and not v.tag[0] == ("_") }
 
 @min_stack(3)
 @check_type("num")
-def ift(stack):
+def ift(stack, **kw):
     """ If then else expects in the stack
     2: value_true
     1: value_false
@@ -193,7 +198,7 @@ def ift(stack):
     stack += [ true if bool(val.val) else false ]
 
 @check_type("num")
-def match_tag(stack):
+def match_tag(stack, **kw):
     """tells how much time an the reference has match any of the n value above
     consumes all the elements, leaves the number of match on the stack
 
@@ -215,7 +220,7 @@ def match_tag(stack):
     stack += [ Value(N(matches), "_tag_matches") ]
 
 @check_type("num")
-def match(stack):
+def match(stack, **kw):
     """tells how much time an the reference has match any of the n value above
     consumes all the elements, leaves the number of match on the stack
 
@@ -239,7 +244,7 @@ def match(stack):
     stack += [ Value(N(matches), "_matches") ]
 @min_stack(3)
 @check_type("str", "num", "num")
-def splice(stack):
+def splice(stack, **kw):
     """
     """
     value, _start, _stop = reversed(pop(3)(stack))
@@ -249,20 +254,20 @@ def splice(stack):
 @whitelist(dispatch_op.keys())
 def num_op(op):
     @check_type("num", "num")
-    def do_op(stack):
+    def do_op(stack, **kw):
         stack += [ Value(NUM(dispatch_op[op](*pop_val(2)(stack)))) ]
     return do_op
 
 
 @min_stack(2)
 @check_type("str", "str")
-def cat(stack):
+def cat(stack, **kw):
     v1, v2 =pop(2)(stack)
     stack+= [ Value(v2.val+v1.val,v1.tag) ]
 
 @min_stack(2)
 @check_type("str")
-def tag(stack):
+def tag(stack, **kw):
     """ give the tag name to the last value
     1: value
     0: tag
@@ -273,13 +278,20 @@ def tag(stack):
     stack += [ val ]
 
 @min_stack(1)
-def top(stack):
+def top(stack, **kw):
     """use the top of the stack as a stack where to put/fetch stuff"""
     stack.insert(0,stack.pop())
 
+
+def proxy(key):
+    def functor(stack, **kw):
+        kw["ctx"]["dispatch"][key](stack, **kw)
+    return functor
+
+
 @min_stack(1)
 @check_type("str")
-def get(stack):
+def get(stack, **kw):
     """find element matching tag of the last value on the stack
     emulate a dict.get behaviour
     """
@@ -296,7 +308,7 @@ def get(stack):
 
 @min_stack(2)
 @check_type("num")
-def rotn(stack):
+def rotn(stack, **kw):
     """
     pick the nth element in the stack
     """
@@ -307,44 +319,44 @@ def rotn(stack):
     stack[rpos:] = stack[rpos+1:]
     stack += [ pivot  ]
 
-def nop(stack):
+def nop(stack, **kw):
     pass
 
 @min_stack(2)
-def swap(stack):
+def swap(stack, **kw):
     """ a b => b a """
     stack[-1], stack[-2] = stack[-2], stack[-1]
 
 @min_stack(2)
-def over(stack):
+def over(stack, **kw):
     """ a b OVER => a b a """
     stack += [ stack[-2], ]
 
 @min_stack(1)
-def drop(stack):
+def drop(stack, **kw):
     """ ... x DROP => ... """
     stack.pop()
 
 @min_stack(1)
-def dup(stack):
+def dup(stack, **kw):
     """
     .... a DUP => ... a a
     """
     stack += [ stack[-1].copy() ]
 
-def leng(stack):
+def leng(stack, **kw):
     """return the size of the stack
     """
     stack += [ V(N(len(stack)),"_length") ]
 
 @min_stack(1)
 @check_type("str")
-def eval(stack):
+def eval(stack, **kw):
     """Eval a string on the stack that is a serie of comma separated operators
     """
     parse({}, stack.pop().str.replace(",", " "), stack)
 
-def ejoin(stack):
+def ejoin(stack, **kw):
     """
     leaves the interpreter and return a join string of all the arguments
     """
@@ -352,7 +364,7 @@ def ejoin(stack):
     stack += [ "&".join([ "=".join([v.tag,v.str]) for v in stack if not
         v.tag.startswith("_") and v.tag != "" ]),  "<<TERM>>" ]
 
-def edict(stack):
+def edict(stack, **kw):
     print( "EXITING")
     stack+=[ to_dict(stack), "<<TERM>>" ]
 
@@ -362,7 +374,7 @@ one_num = check_type("num")
 def apply_(f, consume=2, chek_input=two_num, check_output=last_types_in_stack_must_be("num"),**kw):
     """Convenience function to apply f(S[-1], [-2], ...) and push it on stack
     """
-    def do(stack):
+    def do(stack, **kw):
        
         tag=stack[-1].tag if kw.get("keep_tag", False) else ''
         stack += [V(N(f(*reversed(pop_val(consume)(stack)))),tag)]
@@ -372,7 +384,7 @@ def apply_(f, consume=2, chek_input=two_num, check_output=last_types_in_stack_mu
 
 @min_stack(1)
 @check_type("num")
-def not_(stack):
+def not_(stack, **kw):
     """Logical Not"""
     l = stack[-1]
     #if l.tag:
@@ -382,7 +394,7 @@ def not_(stack):
 
 
 @min_stack(1)
-def val_type(stack):
+def val_type(stack, **kw):
     v, = pop(1)(stack)
     try:
         stack += [ V(v.type, "type") ]
@@ -390,7 +402,7 @@ def val_type(stack):
         stack += [ V("external") ]
 @min_stack(1)
 @check_type("num")
-def ndup(stack):
+def ndup(stack, **kw):
     """ ... nth elts n: DUP => ... nth elts nth elts """
     v, = pop(1)(stack)
     min_stack_size(v.int)(stack)
@@ -399,7 +411,7 @@ def ndup(stack):
 
 @min_stack(2)
 @check_type("str", "str")
-def in_(stack):
+def in_(stack, **kw):
     """Find a needle in a haystack"""
     needle, haystack = pop_val(2)(stack)
     stack += [ true if int(needle in haystack) else false ]
@@ -409,7 +421,7 @@ stacks=dict()
 
 @min_stack(2)
 @check_type("num", "str")
-def freeze(stack):
+def freeze(stack, **kw):
     """store the n last element of the stack in a variable
     .... n: "name": FREEZE -> ... (n elements are stored in variable "name": """
 
@@ -418,9 +430,12 @@ def freeze(stack):
 
     stacks[name]=list(map(lambda e : e.copy(),stack[len(stack) - int(depth): len(stack)]))
 
+def debug(stack, **kw):
+    display(stack)
+
 @min_stack(1)
 @check_type("str")
-def thaw(stack):
+def thaw(stack, **kw):
     """restore stack stored in "name": into the stack"""
     global stacks
     name = pop_val(1)(stack)
@@ -428,26 +443,26 @@ def thaw(stack):
 
 @min_stack(2)
 @check_type("str", "str")
-def string_equal(stack):
+def string_equal(stack, **kw):
     val1, val2 = pop_val(2)(stack)
     stack += [ true if val1==val2 else false ]
 
 
 @min_stack(2)
 @check_type("num", "num")
-def cmp_(stack):
+def cmp_(stack, **kw):
     val1, val2 = pop_val(2)(stack)
     stack += [ true if (bool(val1) or bool(val2)) else false ]
 
 @min_stack(2)
 @check_type()
-def or_(stack):
+def or_(stack, **kw):
     val1, val2 = pop_val(2)(stack)
     stack += [ true if (bool(val1) or bool(val2)) else false ]
 
 @min_stack(2)
 @check_type()
-def and_(stack):
+def and_(stack, **kw):
     val1, val2 = pop_val(2)(stack)
     stack += [ true if (bool(val1) and bool(val2)) else false ]
 
@@ -473,7 +488,14 @@ ops.update({
        "NOT" : not_,
        "OR" : or_,
        "AND" : and_,
+       "LUN" : proxy("lun"),
+       "PING" : proxy("ping"),
+       "SEL" : proxy("sel"),
+       "UNSEL" : proxy("unsel"),
+       "TSSET" : proxy("tsset"),
+       "CAP" : cap,
        "FREEZE": freeze,
+       "DBG" : debug,
        "THAW": thaw,
        "TAG" : tag,
        "IFT" : ift,
@@ -495,7 +517,7 @@ ops.update({
        "<<TERM>>" : lambda x:x,
 })
 base_type = dict(
-    num = '''[+-]?((?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?|\d+)''',
+    num = r'''[+-]?((?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?|\d+)''',
     dqstring = r'''"[^"\\]*(?:\\[\S\s][^"\\]*)*"''',
     sqtring = r"""'[^'\\]*(?:\\[\S\s][^'\\]*)*'""",
     string = r'''(%(sqtring)s|%(dqstring)s)''',
@@ -585,7 +607,7 @@ def parse(ctx, string, data=_SENTINEL, dbg=False, context=_SENTINEL):
             kwd = kwd.groupdict()
             if kwd["OP"]:
                 try:
-                    ops[kwd["OP"]](data)
+                    ops[kwd["OP"]](data, ctx=ctx)
                 except Exception as e:
                     print(e, file=stderr)
             if len(data)>2 and "<<TERM>>" == data[-1]:
@@ -644,8 +666,6 @@ def parse(ctx, string, data=_SENTINEL, dbg=False, context=_SENTINEL):
         return data[-1]
 
         
-    finally:
-        del(data)
 
 def console():
     import argparse
@@ -734,7 +754,7 @@ saved code in session.2022-05-03-19:05:05.confined
     valid_code=''
     res=''
     while 1:
-        clear()
+#        clear()
         if not valid_code and ctx:
             print("contexte loaded")
             print(dumps(ctx, indent=4))
@@ -755,9 +775,10 @@ saved code in session.2022-05-03-19:05:05.confined
             break
         complete= list(ops.keys()) + list(ciao)
         res=parse(ctx,s,data=stack, dbg=True)
-        #if isinstance(res, Value):
-        #    print("r>" + str(res))
+        if isinstance(res, Value):
+            print("r>" + str(res))
         if isinstance(res, Value) and res.tag=="ERROR" and "Type: >Ressource<" in res.val:
+            print("rE>" + str(res))
             break
         if stack:
             check_last=[ stack[-1], ]

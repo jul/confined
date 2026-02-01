@@ -5,7 +5,7 @@ Confined: a safe resource bound immutable interpreter
 * source: https://github.com/jul/confined
 * ticketing: https://github.com/jul/confined/issues
 
-.. image:: 
+.. image::
    https://travis-ci.org/jul/confined.png
 
 Use
@@ -132,9 +132,17 @@ Gives::
     fin
     end
 
+New callback features
+*********************
+
+
+
+
 
 Changelog
 =========
+* 0.2.0       adding functions to permit callbacks (for FAIM project) to use confined
+            as a bus logic
 * 0.1.17    adding the freeze/thaw functions that can store part of stack in 
             variables
 * 0.1.16    requirements for prompt_toolkit added, fixed tokenization errors

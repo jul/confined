@@ -558,13 +558,16 @@ def templatize(val,a_str,**kw):
 
 def tokenize(ops,str):
     atom = dict(
-        ALL = r"""(%(STR)s|%(NUM)s|%(OP)s|%(VAR)s)""",
+        ALL = r"""(%(STR)s|%(NUM)s|%(OP)s|%(VAR)s|%(PROXY)s|%(COMMENT)s|%(T_TO_LONG)s)""",
         STR = '''(?P<STR>(%(dqstring)s|%(sqtring)s):%(id)s)''',
         NUM = '''(?P<NUM>%(num)s:%(id)s)''',
         OP = "(?P<OP>%s)" % "|".join(ops.keys()),
-        VAR = r"""(?P<VAR>\$\S+)""",
+        VAR = r"""(?P<VAR>\$\S{,78})""",
+        T_TO_LONG = r"""(?P<T_TO_LONG>.{80,})""",
+        COMMENT = r"""(?P<COMMENT>\#[^\#]{,78}\#)""",
+        PROXY = r"""(?P<PROXY>_\S{,78})""",
     )
-    regexp = re.compile(r"""%(ALL)s""" % atom % atom % base_type  ,
+    regexp = re.compile(r"""%(ALL)s""" % atom % atom % base_type % atom % atom % atom ,
         re.MULTILINE|re.VERBOSE)
     return regexp.finditer(str)
 
@@ -600,6 +603,7 @@ def parse(ctx, string, data=_SENTINEL, dbg=False, context=_SENTINEL):
                 toprint="*%s* in \n" % last_unrecognized + \
                     string[match_kwd.pos:]
                 conf_error(data, "UnrecognizedToken", toprint)
+
                 print("\n")
             cur_pos, current_match = current_match, match_kwd.start()
             old,last_match = last_match, match_kwd.end()
@@ -628,6 +632,18 @@ def parse(ctx, string, data=_SENTINEL, dbg=False, context=_SENTINEL):
             if kwd["VAR"]:
                 # dont use "safe_substitute" it is unsafe
                 data+= [ V(Template(kwd["VAR"],).substitute(ctx), kwd["VAR"][1:]) ]
+            if kwd["PROXY"]:
+                try:
+                    proxy(kwd["PROXY"])(data, ctx=ctx)
+                except KeyError:
+                    conf_error(data, f"UnavailableProxyFunction",  f"{kwd['PROXY']}")
+            if kwd["COMMENT"]:
+                pass
+
+            if kwd["T_TO_LONG"]:
+                conf_error(data,"TokenToLong", f"{kwd['T_TO_LONG']} is too big to be parsed")
+
+
             dbg and display(data)
 
             if not context.get("control",False):
@@ -667,10 +683,13 @@ def parse(ctx, string, data=_SENTINEL, dbg=False, context=_SENTINEL):
 
         
 
-def console():
+def console(interpret=False):
     import argparse
     from sys import stdin
     from json import loads
+    from sys import argv
+
+
     parser = argparse.ArgumentParser(
     formatter_class=argparse.RawDescriptionHelpFormatter,
     description='''
@@ -722,6 +741,11 @@ saved code in session.2022-05-03-19:05:05.confined
     parser.add_argument('-json', default='{}',help="json with a dict for the template")
     parser.add_argument('file', nargs='?', help='optional file to interpret else use stdin')
     res=parser.parse_args()
+    
+    try:
+        interpret = argv[0][-1].strip() != "s"
+    except IndexError:
+        pass
 
     def usage(status=0):
         parser.print_help()
@@ -732,6 +756,11 @@ saved code in session.2022-05-03-19:05:05.confined
     try:
         if res.file:
             s=loaded= (open(res.file) if res.file != "-" else stdin).read()
+            data=[]
+            parse(ctx, s, data=data)
+            if interpret:
+                display(data)
+                exit()
     except Exception as e:
         print("check arguments")
         print(res)

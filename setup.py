@@ -35,7 +35,7 @@ setup(
         long_description=open("README.txt").read(),
         entry_points = {
         #'console_scripts': ['console=confined.console:main'],
-        'console_scripts': ['confineds=confined:console'],
+        'console_scripts': ['confineds=confined:console', 'confined=confined:console'],
         },
         install_requires=['prompt_toolkit',   ],
         classifiers=[

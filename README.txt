@@ -24,6 +24,49 @@ Usage
 Language
 ********
 
+Of course, I haven't taken the time to document it, I just did the basic
+stack manipulations I recalled from using the HP48SX Forth just to prove
+myself it was easy to extend.
+
+Proxied command
+---------------
+
+Recently though, many important features have been made in order to use
+confined as a message passing language on use on top of a MQTT bus to
+experiment to build a Central Command Center *à la* vilain hacker to
+pilot independent agent.
+
+For this, there are commands that must be implemented client side.
+
+Such as **LUN**, *unlistenall* which gives the order to the device to
+get back to its natural listening buses.
+
+Such as, **NUM: TSSET**, *time slice set* to have devices set their time
+slices for clocked device to the aforementionned clock.
+
+
+** "agent_name": SEL**, *set agent_name in active mode*; launches the
+measuring sonde on the agent which should expect to spew data on
+*DATA/agent name* on the bus.
+
+** "agent_name": UNSEL**, *unset agent_name in active mode*; stop the
+measuring sonde.
+
+**PING**, *ping* causes all devices to spew *"agent name":PONG* on the
+broadcast bus: *DATA/*
+
+
+
+All commands beginning with a **_** are client side provided and
+expected to at most generate an error when not present.
+
+
+Comments
+--------
+
+
+As a shell
+**********
 
 Sandbox for the language with console exists as a standalone script.
 At the end of the session your code can be replayed like this:
@@ -54,6 +97,30 @@ results::
     |   1 | 0.1956:tva 
     |   0 | 3.912:prix 
     ******************************************
+
+As an interpreter
+-----------------
+
+If the binary is ending by an **s** it is considered a *shell*. Else it is 
+an interpreter displaying the resulting stack.
+
+Example of a valid confined script::
+
+    #!/usr/bin/env confined
+    #
+
+    # The SECOND line beginging with a sharp is mandatory  at the beginning #
+    # because confined comments are enclosed between to sharp signs         #
+    2: 2: ADD
+
+And when interpreted results in::
+
+    $ ./test
+
+    ******************************************
+    |   0 | 4.0: 
+    ******************************************
+
 
 
 
